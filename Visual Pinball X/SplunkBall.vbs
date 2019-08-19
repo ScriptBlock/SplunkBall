@@ -106,6 +106,13 @@
 	Const UpperPlayfieldObjective = 1
 	Const OrbitPlayfieldObjective = 2
 	Const TargetsPlayfieldObjective = 3
+
+	Const TargetObjectiveA = 0
+	Const TargetObjectiveB = 1
+	Const TargetObjectiveC = 2
+	Const TargetObjectiveD = 3
+	Const TargetObjectiveE = 4
+
 	
 	' Define Global Variables
 
@@ -159,6 +166,7 @@
 	Dim LeftOutlaneSaverMode
 	Dim PowerupRampMode
 	Dim PlayfieldObjectives(4)
+	Dim TargetObjectives(5)
 	Dim UpperPlayfieldDTsHit
 	Dim LowerPlayfieldDTsHit
 	Dim LeftLockballMode
@@ -3046,8 +3054,9 @@ End Sub
 	End Sub
 
 
-	Sub CreateNewBall()
-		WriteLog("Function=CreateNewBall")
+	Sub CreateNewBall(isFromLockBall)
+		WriteLog("Function=CreateNewBall isFromLockBall=" & isFromLockBall)
+		'TODO NZ: different situation if from lockball - create at the multiball kicker'
 		KI_Plunger.CreateSizedball BallSize / 2
 		BallsOnPlayfield = BallsOnPlayfield + 1
 		PlaySoundAt SoundFXDOF("fx_Ballrel", 114, DOFPulse, DOFContactors), KI_Plunger
@@ -3176,6 +3185,7 @@ End Sub
 					PuPlayer.playlistplayex pBackglass,"videoballsaved","",100,1
 				End If
 			Else
+				'TODO NZ: fix this for locked balls.  will need to kick them out and drain them'
 				If(BallsOnPlayfield = 1) Then
 					If(bMultiBallMode = True) then
 						bMultiBallMode = False
@@ -3491,6 +3501,7 @@ End Sub
 		bExtraBallWonThisBall = False
 		bBallSaverReady = True
 		bSkillShotReady = False	
+		bMultiBallMode = False
 		JackpotActive = False
 		Invincibility = False
 		RightOutlaneSaverMode = False
@@ -3499,6 +3510,9 @@ End Sub
 		Dim i
 		For i = 0 to 3
 			PlayfieldObjectives(i) = 0
+		Next
+		For i = 0 to 4
+			TargetObjectives(i) = 0
 		Next
 		UpperPlayfieldDTsHit = False
 		LowerPlayfieldDTsHit = False
@@ -3743,16 +3757,21 @@ End Sub
 			Case "KI_RightLockball":
 				If RightLockballMode Then
 					WriteLog("Function KI_RightLockball Note='right lockball mode is enabled'")
+					'TODO NZ: dof/lights'
+					'TODO NZ: create a new ball '
 				Else
 					WriteLog("Function KI_RightLockball Note='right lockball mode is disabled'")
 					AddScore(100)
 					KI_RightLockball.Kick 0, 10
+					'TODO NZ: dof/lights
 				End If
 				
 			Case "KI_LeftLockball":
 				If LeftLockballMode Then
 					WriteLog("Function=KI_LeftLockball_Hit Note='lockball mode is enabled'")
 					'TODO NZ: dof/sound/etc
+					'TODO NZ: create a new ball '
+
 				Else
 					WriteLog("Function=KI_LeftLockball_Hit Note='lockball mode is disabled'")
 					AddScore(100) 'TODO NZ: Fix this
@@ -3803,6 +3822,10 @@ End Sub
 					DOF 313, DOFPulse   'DOF MX - Left Outer Lane
 				End If
 				AddScore 100
+				If NOT Invincibility AND Not bBallSaverActive Then
+					SetRightOutlaneSaver(True)
+					vpmtimer.AddTimer 10000, "SetRightOutlaneSaver(False) '"
+				End If
 				' Do some sound or light effect
 				'LastSwitchHit = "lane1"
 
@@ -3814,6 +3837,10 @@ End Sub
 					DOF 313, DOFPulse   'DOF MX - Left Outer Lane
 				End If
 				AddScore 100
+				If NOT Invincibility AND Not bBallSaverActive Then
+					SetLeftOutlaneSaver(True)
+					vpmtimer.AddTimer 10000, "SetLeftOutlaneSaver(False) '"
+				End If
 				' Do some sound or light effect
 				'LastSwitchHit = "lane1"
 			
@@ -3837,23 +3864,30 @@ End Sub
 					WriteLog("Function=GA_PowerupRamp_Hit Note='powerup ramp not active'")
 				End If
 			Case "TR_PowerupRamp":
+				'nothing to do here yet.  maybe some dof/lights/pup'
 			
 			
 			'''''''''''''''TARGETS''''''''''''''''
 			Case "TA_ObjectiveA":
+				ObtainTargetObjective(TargetObjectiveA)
 			Case "TA_ObjectiveB":
+				ObtainTargetObjective(TargetObjectiveB)
 			Case "TA_ObjectiveC":
+				ObtainTargetObjective(TargetObjectiveC)
 			Case "TA_ObjectiveD":
+				ObtainTargetObjective(TargetObjectiveD)
 			Case "TA_ObjectiveE":				
-
+				ObtainTargetObjective(TargetObjectiveE)
 
 			'''''''''''''''OUTLANES''''''''''''''''
 			Case "KI_LeftOutlaneSaver":
 				KI_LeftOutlaneSaver.Kick 0, 50
 				'TODO NZ: Animate P_LeftOutlaneSaver
+
 			Case "TR_RightOutlane":
 				If NOT Invincibility Then
 					If RightOutlaneSaverMode Then
+						vpmtimer.AddTimer 1000, "SetRightOutlaneSaver(false) '"
 						'disable saver after short timeout SetRightOutlaneSaver(false)
 					Else
 						'assign points going to drain
@@ -3862,12 +3896,14 @@ End Sub
 				Else
 					'play a sound for invincible saved
 				End If
+
 			Case "TR_LeftOutlane":
 				'TODO NZ: assign points and disable saver maybe
 				If NOT Invincibility Then
 					If LeftOutlaneSaverMode Then
 						'play some music "you got saved!"
 						'vpmtimer delay 1 second SetLeftOutlaneSaver(false)
+						vpmtimer.AddTimer 1000, "SetLeftOutlaneSaver(faldse) '"
 					Else
 						'assign points, going to drain
 					End If
@@ -3880,6 +3916,7 @@ End Sub
 			'''''''''''''''PLUNGER''''''''''''''''
 			Case "TR_PlungerLaneExit":
 				vpmTimer.AddTimer 1000, "SetPowerupRamp(true) '"
+				SetBallSaverMode(true, 10000)
 
 			Case "TR_BallLaunch":
 				'TODO NZ: need to figure out how to auto plunger the ball out
@@ -4018,6 +4055,25 @@ End Sub
 	
 	End Sub
 
+	Sub ObtainTargetObjective(objectiveNumber)
+		'TODO NZ: fix this object reference'
+		L_ObjectiveA.State = 1
+		TargetObjectives(objectiveNumber) = 1
+		Dim isTargetObjectiveAchieved
+		Dim i
+		For i = 0 to 4
+			If TargetObjectives(i) = 0 Then
+				isTargetObjectiveAchieved = false
+			End If
+		Next
+
+		If isTargetObjectiveAchieved Then
+			JackpotActive = true			
+			AddScore(1000)
+			'TODO NZ: dof/lights/etc
+		End If
+	End Sub
+
 '---------LANE HELPERS-----------	
 	Sub SetLeftOutlaneSaver(mode)
 		WriteLog("Function=SetLeftOutlaneSaver mode=" & mode)
@@ -4123,6 +4179,18 @@ End Sub
 	
 	End Sub
 	
+	Sub SetBallSaverMode(mode, delay)
+		bBallSaverActive = mode
+		SetLeftOutlaneSaver(mode)
+		SetRightOutlaneSaver(mode)			
+
+		If mode Then
+			'TODO NZ: dof/lights/etc'
+			vpmtimer.AddTimer delay, "SetBallSaverMode(false) '"
+		Else 
+			'TODO NZ: dof/lights/etc'
+		End If
+	End Sub
 '---------BUMPER HELPERS-----------	
 	Sub CheckBumperHitCount
 		If BumperHitCount = BumperBonusCount Then
