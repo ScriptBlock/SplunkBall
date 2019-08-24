@@ -170,7 +170,9 @@
 	Dim UpperPlayfieldDTsHit
 	Dim LowerPlayfieldDTsHit
 	Dim LeftLockballMode
-
+	Dim RightLockballMode
+	Dim RightLockballArmed
+	Dim LeftLockballArmed
 	
 	
 	Dim LoggingQueue
@@ -1146,7 +1148,8 @@ End Sub
 		Dim i
 		bGameInPLay = True
 		StopAttractMode
-		GiOn
+		'GiOn
+		GiOff
 		TotalGamesPlayed = TotalGamesPlayed + 1
 		SaveGamesPlayed
 		CurrentPlayer = 1
@@ -2270,10 +2273,10 @@ End Sub
 	white = 1
 	base = 11
 
-	Sub SetLightColor(n, col, stat)
+	Sub SetLightColor(n, col, state)
 		Select Case col
 			Case red
-				n.color = RGB(18, 0, 0)
+				n.color = RGB(255, 0, 0)
 				n.colorfull = RGB(255, 0, 0)
 			Case orange
 				n.color = RGB(18, 3, 0)
@@ -2288,7 +2291,7 @@ End Sub
 				n.color = RGB(0, 8, 0)
 				n.colorfull = RGB(0, 64, 0)
 			Case green
-				n.color = RGB(0, 18, 0)
+				n.color = RGB(0, 255, 0)
 				n.colorfull = RGB(0, 255, 0)
 			Case blue
 				n.color = RGB(0, 18, 18)
@@ -2309,9 +2312,9 @@ End Sub
 				n.color = RGB(255, 197, 143)
 				n.colorfull = RGB(255, 255, 236)
 		End Select
-		If stat <> -1 Then
+		If state <> -1 Then
 			n.State = 0
-			n.State = stat
+			n.State = state
 		End If
 	End Sub
 
@@ -2321,6 +2324,14 @@ End Sub
 		L_SLight.color = RGB(255,0,0):L_SLight.colorfull = RGB(255,0,0)
 		L_PLight.color = RGB(255,0,0):L_PLight.colorfull = RGB(255,0,0)
 		L_LLight.color = RGB(255,0,0):L_LLight.colorfull = RGB(255,0,0)
+		
+		SetLightColor L_SLight, red, 1
+		SetLightColor L_PLight, red, 1
+		SetLightColor L_LLight, red, 1
+		
+		SetLightColor L_StreamOrbital1, green, 1
+		SetLightColor L_StreamOrbital2, green, 1
+		SetLightColor L_StreamOrbital3, green, 1
 		
 	End Sub
 
@@ -3018,7 +3029,7 @@ End Sub
 		WriteLog("Function=FirstBall Calling=ResetForNewPlayerBall")
 		ResetForNewPlayerBall()
 		WriteLog("Function=FirstBall Calling=CreateNewBall")
-		CreateNewBall()
+		CreateNewBall false
 	End Sub
 
 
@@ -3056,17 +3067,24 @@ End Sub
 
 	Sub CreateNewBall(isFromLockBall)
 		WriteLog("Function=CreateNewBall isFromLockBall=" & isFromLockBall)
-		'TODO NZ: different situation if from lockball - create at the multiball kicker'
-		KI_Plunger.CreateSizedball BallSize / 2
-		BallsOnPlayfield = BallsOnPlayfield + 1
-		PlaySoundAt SoundFXDOF("fx_Ballrel", 114, DOFPulse, DOFContactors), KI_Plunger
-		KI_Plunger.Kick 90, 4
-		If BallsOnPlayfield > 1 Then
-			bMultiBallMode = True
-			DOF 127, DOFOn    'Beacon ON
-			bAutoPlunger = True
+		If isFromLockBall Then
+			KI_MultiballLaunch.CreateSizedball BallSize / 2
+			'TODO NZ: fix this to play sound at bumpers
+			PlaySoundAt SoundFXDOF("fx_Ballrel", 114, DOFPulse, DOFContactors), KI_MultiballLaunch
+			KI_MultiballLaunch.Kick 180, 30
+		Else 
+			'TODO NZ: different situation if from lockball - create at the multiball kicker'
+			KI_Plunger.CreateSizedball BallSize / 2
+			BallsOnPlayfield = BallsOnPlayfield + 1
+			PuPlayer.LabelSet pBackglass,"lefttimer",BallsOnPlayfield,1,""
+			PlaySoundAt SoundFXDOF("fx_Ballrel", 114, DOFPulse, DOFContactors), KI_Plunger
+			KI_Plunger.Kick 90, 4
+			If BallsOnPlayfield > 1 Then
+				bMultiBallMode = True
+				DOF 127, DOFOn    'Beacon ON
+				bAutoPlunger = True
+			End If
 		End If
-
 	End Sub
 
 
@@ -3076,11 +3094,15 @@ End Sub
 	End Sub
 
 	Sub CreateMultiballTimer_Timer()
+		WriteLog("Function=CreateMultiballTimer_Timer")
 		If bBallInPlungerLane Then
 			Exit Sub
 		Else
 			If BallsOnPlayfield <MaxMultiballs Then
-				CreateNewBall()
+				WriteLog("Function=CreateMultiballTimer_Timer Note='Creating a new ball from the launcher'")
+				BallsOnPlayField = BallsOnPlayField + 1
+				PuPlayer.LabelSet pBackglass,"lefttimer",BallsOnPlayfield,1,""
+				CreateNewBall true
 				mBalls2Eject = mBalls2Eject -1
 				If mBalls2Eject = 0 Then 
 					Me.Enabled = False
@@ -3120,7 +3142,7 @@ End Sub
 			LightSeqFlasher.UpdateInterval = 150
 			LightSeqFlasher.Play SeqRandom, 10, , 2000
 
-			CreateNewBall()
+			CreateNewBall false
 			ResetForNewPlayerBall
 			PuPlayer.playlistplayex pBackglass,"videoextraball","isthatsupposedtoimpress.mov",100,2
 			pNote "SHOOT AGAIN","SAME PLAYER"
@@ -3153,7 +3175,7 @@ End Sub
 			CurrentPlayer = NextPlayer
 			AddScore 0
 			ResetForNewPlayerBall()
-			CreateNewBall()
+			CreateNewBall false
 			If PlayersPlayingGame> 1 Then
 				PlaySound "vo_player" &CurrentPlayer
 			End If
@@ -3167,37 +3189,48 @@ End Sub
 	End Sub
 
 	Sub Drain_Hit()
+		WriteLog("Function=Drain_Hit")
 		Drain.DestroyBall
 		BallsOnPlayfield = BallsOnPlayfield - 1
-		PlaySoundAt "fx_drain", Drain
+		PuPlayer.LabelSet pBackglass,"lefttimer",BallsOnPlayfield,1,""
+		'PlaySoundAt "fx_drain", Drain
 		If Tilted Then
 			StopEndOfBallMode
 		End If
 		If(bGameInPLay = True) AND(Tilted = False) Then
 			If(bBallSaverActive = True) Then
+				WriteLog("Function=Drain_Hit Note='bBallSaverActive is true.. launching a new ball'")
 				AddMultiball 1
 				bAutoPlunger = True
 				If bMultiBallMode = False Then
-					Ballsaved
-					PuPlayer.playlistplayex pCallouts,"audiocallouts","ballsaved.wav",100,1
-					ChillOutTheMusic
+					'Ballsaved
+					'PuPlayer.playlistplayex pCallouts,"audiocallouts","ballsaved.wav",100,1
+					'ChillOutTheMusic
 					'pNote "BALL SAVED",""
-					PuPlayer.playlistplayex pBackglass,"videoballsaved","",100,1
+					'PuPlayer.playlistplayex pBackglass,"videoballsaved","",100,1
 				End If
 			Else
 				'TODO NZ: fix this for locked balls.  will need to kick them out and drain them'
 				If(BallsOnPlayfield = 1) Then
 					If(bMultiBallMode = True) then
-						bMultiBallMode = False
 						DOF 127, DOFOff   'DOF - Beacon - OFF
-						ChangeGi "white"
+					End If
+					bMultiBallMode = False
+					ChangeGi "white"
 				End If
-				bMultiBallMode = False		
-				ChangeGi "white"
-			End If
+			
 				If(BallsOnPlayfield = 0) Then
 					bMultiBallMode = False
 					ChangeGi "white"
+					If RightLockballArmed Then
+						KI_RightLockball.DestroyBall
+						RightLockballArmed = false
+					End If
+					
+					If LeftLockballArmed Then	
+						KI_LeftLockball.DestroyBall
+						LeftLockballArmed = false
+					End If
 					vpmtimer.addtimer 1000, "BallDrained '"
 					vpmtimer.addtimer 6000, "EndOfBall '"
 					StopEndOfBallMode
@@ -3516,7 +3549,12 @@ End Sub
 		Next
 		UpperPlayfieldDTsHit = False
 		LowerPlayfieldDTsHit = False
-
+		RightLockballMode = false
+		LeftLockballMode = false
+		RightLockballArmed = false
+		LeftLockballArmed = false
+		
+		
 	End Sub
 
 	Sub TurnOffPlayfieldLights()
@@ -3530,7 +3568,12 @@ End Sub
 
 	Sub ResetNewBallLights() 'turn on or off the needed lights before a new ball is released
 		WriteLog("Function=ResetNewBallLights")
-		TurnOffPlayfieldLights()
+		'TurnOffPlayfieldLights()
+		Dim l
+		'L_StreamOrbital1.State = 0
+		'L_StreamOrbital2.State = 0
+		'L_StreamOrbital3.State = 0
+		
 		'currentplayerbackglass
 	End Sub
 
@@ -3632,8 +3675,8 @@ End Sub
 
 	Sub W_RightSS_Slingshot
 		WriteLog("Function=W_RightSS_Slingshot")
-		PlaySoundAt SoundFXDOF("fx_slingshot", 103, DOFPulse, DOFContactors), TR_RightInLane
-		PlaySound SoundFX("right_slingshot",DOFContactors), 0,1, 0.05,0.05 '0,1, AudioPan(RightSlingShot), 0.05,0,0,1,AudioFade(RightSlingShot)
+		PlaySoundAt SoundFXDOF("RightSlingShot", 103, DOFPulse, DOFContactors), TR_RightInLane
+		'PlaySound SoundFX("RightSlingShot",DOFContactors), 0,1, 0.05,0.05 '0,1, AudioPan(RightSlingShot), 0.05,0,0,1,AudioFade(RightSlingShot)
 		RB_RightSS2.Visible = 1
 
 		P_RightSSKicker.TransZ = -20
@@ -3652,8 +3695,8 @@ End Sub
 
 	Sub W_LeftSS_Slingshot
 		WriteLog("Function=W_LeftSS_Slingshot")
-		PlaySoundAt SoundFXDOF("fx_slingshot", 103, DOFPulse, DOFContactors), TR_LeftInlane
-		PlaySound SoundFX("left_slingshot",DOFContactors), 0,1, -0.05,0.05 '0,1, AudioPan(LeftSlingShot), 0.05,0,0,1,AudioFade(LeftSlingShot)
+		PlaySoundAt SoundFXDOF("LeftSlingShot", 103, DOFPulse, DOFContactors), TR_LeftInlane
+		'PlaySound SoundFX("LeftSlingShot",DOFContactors), 0,1, -0.05,0.05 '0,1, AudioPan(LeftSlingShot), 0.05,0,0,1,AudioFade(LeftSlingShot)
 		RB_LeftSS2.Visible = 1
 		P_LeftSSKicker.TransZ = -20
 		LStep = 0
@@ -3744,42 +3787,74 @@ End Sub
 				L_DT_LowerRight.State = 1
 				vpmtimer.AddTimer 250, "CheckLowerDropTargets() '"
 
+			'''''''''''''''SKILLSHOT''''''''''''''''				
+			Case "TR_SkillShot":
+				If JackpotActive Then
+					'TODO NZ: award jackpot, flash lights, etc
+					AddScore(1000)
+					SetJackpot false
+				Else
+					AddScore(50)
+				End If					
 				
 				
 			'''''''''''''''LOCKBALLS''''''''''''''''
 			Case "DT_RightLockball":
 				AddScore(100)
 				If NOT bMultiBallMode Then
-					WriteLog("Function=DT_RightLockball Note='It's not multiball - scheduling popup in 15 seconds")
-					vpmtimer.addtimer 15000, "DT_RightLockball.IsDropped = 0'"
+					WriteLog("Function=DT_RightLockball Note='Its not multiball'")
+					If RightLockballMode AND RightLockballArmed Then
+						vpmtimer.addtimer 500, "SetRightLockballDT true '"					
+					Else 
+						vpmtimer.addtimer 15000, "SetRightLockballDT true '"
+					End If
 				End If
 
 			Case "KI_RightLockball":
+				RightLockballArmed = true
 				If RightLockballMode Then
 					WriteLog("Function KI_RightLockball Note='right lockball mode is enabled'")
+					
+					CreateNewBall true
 					'TODO NZ: dof/lights'
 					'TODO NZ: create a new ball '
 				Else
 					WriteLog("Function KI_RightLockball Note='right lockball mode is disabled'")
 					AddScore(100)
-					KI_RightLockball.Kick 0, 10
 					'TODO NZ: dof/lights
+					vpmtimer.addtimer 500, "KickRightLockball '"
+					
 				End If
 				
 			Case "KI_LeftLockball":
+				LeftLockballArmed = true
 				If LeftLockballMode Then
 					WriteLog("Function=KI_LeftLockball_Hit Note='lockball mode is enabled'")
+					CreateNewBall true
 					'TODO NZ: dof/sound/etc
 					'TODO NZ: create a new ball '
 
 				Else
 					WriteLog("Function=KI_LeftLockball_Hit Note='lockball mode is disabled'")
-					AddScore(100) 'TODO NZ: Fix this
-					KI_LeftLockball.Kick 180, 10
+					AddScore(100)
+					vpmtimer.addtimer 500, "KickLeftLockball '"
+
 					'TODO NZ dof
 				End If
 				
-			Case "KI_MultiballLaunch":
+			Case "KI_Multiball":
+				If LeftLockballArmed AND RightLockballArmed Then
+					'TODO NZ: dof/lights/go crazy
+					AddScore(1000)
+					AddMultiball 2
+					KickLeftLockball
+					KickRightLockball
+					BallsOnPlayField = BallsOnPlayField + 2
+				Else
+					AddScore(100)
+					KI_Multiball.Kick 270, 40
+				End If
+					
 				
 				
 
@@ -3824,7 +3899,7 @@ End Sub
 				AddScore 100
 				If NOT Invincibility AND Not bBallSaverActive Then
 					SetRightOutlaneSaver(True)
-					vpmtimer.AddTimer 10000, "SetRightOutlaneSaver(False) '"
+					vpmtimer.AddTimer 10000, "SetRightOutlaneSaver False '"
 				End If
 				' Do some sound or light effect
 				'LastSwitchHit = "lane1"
@@ -3839,16 +3914,25 @@ End Sub
 				AddScore 100
 				If NOT Invincibility AND Not bBallSaverActive Then
 					SetLeftOutlaneSaver(True)
-					vpmtimer.AddTimer 10000, "SetLeftOutlaneSaver(False) '"
+					vpmtimer.AddTimer 10000, "SetLeftOutlaneSaver False '"
 				End If
 				' Do some sound or light effect
 				'LastSwitchHit = "lane1"
 			
+			Case "TR_LeftLockball":
+				'TODO NZ: dof/lights/etc
+				AddScore(100)
+				'AddBonus(100)
+				
 
 			'''''''''''''''ORBITS''''''''''''''''
 			Case "GA_PowerupRamp":
 				If PowerupRampMode Then
 					StreamOrbitCount = StreamOrbitCount + 1
+					Dim i
+					For i = 1 to StreamOrbitCount
+						OrbitalLights(i-1).State = 1
+					Next 
 					WriteLog("Function=GA_PowerupRamp_Hit StreamOrbitCount=" & StreamOrbitCount)			
 					If StreamOrbitCount >= 3 Then
 						ObtainPlayfieldObjective(OrbitPlayfieldObjective) 
@@ -3856,9 +3940,12 @@ End Sub
 						ActivateInvincibility(10)
 						If NOT JackpotActive Then
 							WriteLog("Function=GA_PowerupRamp_Hit Note='Jackpot active from powerup ramp'")
-							JackpotActive = True
+							SetJackpot true
 							'TODO NZ: dof/sound/etc
 						End If
+						For i = 1 to 3
+							OrbitalLights(i-1).State = 0
+						Next
 					End If
 				Else 
 					WriteLog("Function=GA_PowerupRamp_Hit Note='powerup ramp not active'")
@@ -3887,7 +3974,7 @@ End Sub
 			Case "TR_RightOutlane":
 				If NOT Invincibility Then
 					If RightOutlaneSaverMode Then
-						vpmtimer.AddTimer 1000, "SetRightOutlaneSaver(false) '"
+						vpmtimer.AddTimer 1000, "SetRightOutlaneSaver false '"
 						'disable saver after short timeout SetRightOutlaneSaver(false)
 					Else
 						'assign points going to drain
@@ -3903,7 +3990,7 @@ End Sub
 					If LeftOutlaneSaverMode Then
 						'play some music "you got saved!"
 						'vpmtimer delay 1 second SetLeftOutlaneSaver(false)
-						vpmtimer.AddTimer 1000, "SetLeftOutlaneSaver(faldse) '"
+						vpmtimer.AddTimer 1000, "SetLeftOutlaneSaver false '"
 					Else
 						'assign points, going to drain
 					End If
@@ -3916,7 +4003,8 @@ End Sub
 			'''''''''''''''PLUNGER''''''''''''''''
 			Case "TR_PlungerLaneExit":
 				vpmTimer.AddTimer 1000, "SetPowerupRamp(true) '"
-				SetBallSaverMode(true, 10000)
+				bBallInPlungerLane = false
+				SetBallSaverMode True, 10000
 
 			Case "TR_BallLaunch":
 				'TODO NZ: need to figure out how to auto plunger the ball out
@@ -3985,8 +4073,15 @@ End Sub
 	Sub SetRightLockballDT(mode) 'mode = true = DT enabled (up).  mode = false = DT disabled (down)
 		WriteLog("Function=SetRightLockballDT mode=" & mode)
 		If mode Then
-			DT_RightLockball.IsDropped = 0
+			If RightLockballArmed AND NOT RightLockballMode Then
+				WriteLog("Function=SetRightLockballDT Note='Couldn't raise right lockball droptarget because the kicker is armed.  will try again in 1 second'")
+				vpmtimer.addtimer 1000, "SetRightLockballDT true '"
+			Else 
+				DT_RightLockball.IsDropped = 0
+				L_LowerLockballGate.State = 0
+			End If
 		Else
+			L_LowerLockballGate.State = 1
 			DT_RightLockball.IsDropped = 1
 		End If	
 	End Sub
@@ -4010,6 +4105,8 @@ End Sub
 		L_DT_LowerRight.State = 0	
 	End Sub	
 	
+	
+	
 '---------LOCK BALL HELPERS-----------
 	Sub SetLeftLockball(mode)
 		If mode Then
@@ -4029,9 +4126,22 @@ End Sub
 			L_RightLockbalLReady.State = 1
 		Else 
 			LeftLockballMode = false
-			L_LeftLockbalLReady.State = 0
+			L_LeftLockballReady.State = 0
 		End If			
 	End Sub
+	
+	Sub KickLeftLockball
+		KI_LeftLockball.Kick 180,20
+		LeftLockballArmed = false
+	End Sub
+	
+	Sub KickRightLockball
+		SetRightLockballDT false
+		vpmtimer.addtimer 100, "SetRightLockballDT true '"
+		KI_RightLockball.Kick 180,20
+		RightLockballArmed = false
+	End Sub
+	
 	
 '---------OBJECTIVE HELPERS-----------
 	Sub ObtainPlayfieldObjective(objectiveNumber)
@@ -4068,12 +4178,22 @@ End Sub
 		Next
 
 		If isTargetObjectiveAchieved Then
-			JackpotActive = true			
+			SetJackpot true
 			AddScore(1000)
 			'TODO NZ: dof/lights/etc
 		End If
 	End Sub
 
+	Sub SetJackpot(mode) 
+		JackpotActive = mode
+		If mode Then
+			'TODO NZ: play some stuff and flash some lights to indicate jackpot is active
+		Else
+			
+		End If
+	
+	End Sub
+	
 '---------LANE HELPERS-----------	
 	Sub SetLeftOutlaneSaver(mode)
 		WriteLog("Function=SetLeftOutlaneSaver mode=" & mode)
@@ -4113,7 +4233,9 @@ End Sub
 		Select Case laneLetter
 		Case "S":
 			If L_SLight.State = 0 Then 
-				L_SLight.State = 1 
+				'L_SLight.State = 1 
+				SetLightColor L_SLight, red, 1
+				'L_SLight.State = 1
 			Else 
 				L_SLight.State = 0
 			End If
@@ -4180,13 +4302,17 @@ End Sub
 	End Sub
 	
 	Sub SetBallSaverMode(mode, delay)
+		WriteLog("Function=SetBallSaverMode mode=" & mode & " delay=" & delay)
 		bBallSaverActive = mode
 		SetLeftOutlaneSaver(mode)
 		SetRightOutlaneSaver(mode)			
 
 		If mode Then
+			WriteLog("Function=SetBallSaverMode Note='mode is true, setting timeout as passed'")
 			'TODO NZ: dof/lights/etc'
-			vpmtimer.AddTimer delay, "SetBallSaverMode(false) '"
+			If delay > 0 Then
+				vpmtimer.AddTimer delay, "SetBallSaverMode false, 0 '"
+			End If
 		Else 
 			'TODO NZ: dof/lights/etc'
 		End If
@@ -4561,7 +4687,7 @@ End Sub
 	
 '	Sub TR_PlungerLane_Hit
 '		WriteLog("Function=TR_PlungerLane_Hit Note='Ball has left the plunger lane'")
-'		vpmTimer.AddTimer 1000, "TogglePowerupRamp(true) '"
+'		vpmTimer.AddTimer 1000, "TogglePowerupRamp true '"
 '	End Sub
 
 	
