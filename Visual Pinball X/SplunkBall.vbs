@@ -174,6 +174,7 @@
 	Dim RightLockballArmed
 	Dim LeftLockballArmed
 	
+	Dim LightIntensityQueue(2)
 	
 	Dim LoggingQueue
 	Dim LogBufferCounter
@@ -516,7 +517,7 @@ End Sub
 		
 		GiOff
 		PuPlayer.SendMSG "{ ""mt"":301, ""SN"": 2, ""FN"":4, ""FS"":1 }"
-		'StartAttractMode
+		StartAttractMode
 	End Sub
 
 
@@ -1147,9 +1148,9 @@ End Sub
 		WriteLog("Function=ResetForNewGame")
 		Dim i
 		bGameInPLay = True
-		'StopAttractMode
+		StopAttractMode
 		'GiOn
-		'GiOff
+		ResetNewBallLights
 		TotalGamesPlayed = TotalGamesPlayed + 1
 		SaveGamesPlayed
 		CurrentPlayer = 1
@@ -1175,7 +1176,7 @@ End Sub
 		PuPlayer.playlistplayex pMusic,"audioclear","clear.mp3",100, 1
 		pNote "GAME OVER","PLAY AGAIN"
 		PuPlayer.playlistplayex pBackglass,"videogameover","",100,1
-		'StartAttractMode
+		StartAttractMode
 		IntroPosition = 0
 		bGameInPlay = False
 		bJustStarted = False
@@ -2140,12 +2141,14 @@ End Sub
 		DOF 323, DOFOn   'DOF MX - Attract Mode ON
 		bAttractMode = True
 		UltraDMDTimer.Enabled = 1
-		StartLightSeq
+		
 		'ShowTableInfo
 		DMDIntroLoop
 		
 		StartRainbow alights
 		StartAltRainbow GI
+		StartLightSeq
+		
 		IntroMover.enabled = true
 		RulesHelperOff
 	End Sub
@@ -2161,7 +2164,7 @@ End Sub
 		LS_Attract2.StopPlay
 		StopRainbow alights
 		StopAltRainbow GI
-		'ResetAllLightsColor
+		ResetAllLightsColor
 		IntroMover.enabled = false
 		
 	'StopSong
@@ -2319,19 +2322,22 @@ End Sub
 	End Sub
 
 	Sub ResetAllLightsColor ' Called at a new game
+		WriteLog("Function=ResetAllLightsColor")
 		'TODO NZ: fix this
 		'SetLightColor l13, red, -1		
 		'L_SLight.color = RGB(255,0,0):L_SLight.colorfull = RGB(255,0,0)
 		'L_PLight.color = RGB(255,0,0):L_PLight.colorfull = RGB(255,0,0)
 		'L_LLight.color = RGB(255,0,0):L_LLight.colorfull = RGB(255,0,0)
 		
+		'''''''''''''''''''  Playfield Lights '''''''''''''''''''''
+		
 		SetLightColor L_SLight, red, 1
 		SetLightColor L_PLight, red, 1
 		SetLightColor L_LLight, red, 1
 		
-		SetLightColor L_StreamOrbital1, green, 1
-		SetLightColor L_StreamOrbital2, green, 1
-		SetLightColor L_StreamOrbital3, green, 1
+		SetLightColor L_StreamOrbital1, darkgreen, 1
+		SetLightColor L_StreamOrbital2, darkgreen, 1
+		SetLightColor L_StreamOrbital3, darkgreen, 1
 		
 		SetLightColor L_BumperLeft, green, 1
 		SetLightColor L_BumperRight, green, 1
@@ -2356,6 +2362,28 @@ End Sub
 		SetLightColor L_StreamOrbitAchieved, green, 1
 		SetLightColor L_AllTargetsAchieved, green, 1
 		
+		SetLightColor L_InvincibleMode, yellow, 1
+		
+		SetLightColor L_LeftOutlane, blue, 2
+		SetLightColor L_RightOutlane, blue, 2
+		
+		SetLightColor L_LowerLockballGate, purple, 1
+		SetLightColor L_RightLockballReady, purple, 2
+		
+		SetLightColor L_LeftLockballReady, purple, 2
+		
+		SetLightColor L_MultiballLocked1, amber, 1
+		SetLightColor L_MultiballLocked2, amber, 1
+		
+		SetLightColor L_MultiballReady, darkblue, 2
+		
+		SetLightColor L_JackpotReady, blue, 2
+		
+		'''''''''''''''''''  GI Lights '''''''''''''''''''''
+		
+		
+		
+		
 	End Sub
 
 	Sub UpdateBonusColors
@@ -2374,6 +2402,14 @@ End Sub
 		rRed = 255
 		rGreen = 0
 		rBlue = 0
+		Dim l
+		Set LightIntensityQueue(0) = New Queue
+	
+		
+		For Each l in RainbowLights
+			LightIntensityQueue(0).Enqueue(l.intensity)
+		Next
+		
 		RainbowTimer.Enabled = 1
 	End Sub
 
@@ -2386,26 +2422,37 @@ End Sub
 		AltrRed = 255
 		AltrGreen = 0
 		AltrBlue = 0
+		Set LightIntensityQueue(1) = New Queue		
+		Dim l
+		For Each l in AltRainbowLights
+			LightIntensityQueue(1).Enqueue(l.intensity)
+		Next
+		
 		AltRainbowTimer.Enabled = 1
+		
 	End Sub
 
 	Sub StopRainbow(n)
 		Dim obj
+		
 		RainbowTimer.Enabled = 0
 		RainbowTimer.Enabled = 0
-			For each obj in RainbowLights
-				SetLightColor obj, "white", 0
-			Next
+		Dim l
+		For Each l in RainbowLights
+			l.Intensity = LightIntensityQueue(0).Dequeue()
+		Next
 	End Sub
 
 	Sub StopAltRainbow(n)
 		Dim obj
 		AltRainbowTimer.Enabled = 0
-			For each obj in AltRainbowLights
-				SetLightColor obj, "white", 0
-				obj.state = 1
-				obj.Intensity = 15
-			Next
+		Dim l
+		For Each l in AltRainbowLights
+			SetLightColor l, white, -1
+			l.State = 1			
+			l.Intensity = LightIntensityQueue(1).Dequeue()
+		Next
+
 	End Sub
 
 	Sub RainbowTimer_Timer 'rainbow led light color changing
@@ -2622,7 +2669,7 @@ End Sub
 		LS_Attract.Play SeqLeftOn, 15, 1
 		For each a in GI
 			a.State = 1
-			a.Intensity = 80
+			a.Intensity = 50
 		Next
 		LS_Attract2.UpdateInterval = 8
 		LS_Attract2.Play SeqUpOn, 50, 1
@@ -2853,7 +2900,7 @@ End Sub
 			Case 5 'random
 				'LightSeqbumper.UpdateInterval = 4
 				'LightSeqbumper.Play SeqBlinking, , 5, 10
-				LS_Bumpers.UpdateInterval = 4
+				LS_Bumpers.UpdateInterval = 2
 				LS_Bumpers.Play SeqBlinking, , 5, 10
 			Case 6 'random
 				'LightSeqRSling.UpdateInterval = 4
@@ -2987,7 +3034,7 @@ End Sub
 				ChillOutTheMusic
 			End If
 		Else
-			AddScore 4000000
+			'AddScore 4000000
 		END If
 	End Sub
 
@@ -3219,7 +3266,7 @@ End Sub
 			StopEndOfBallMode
 		End If
 		If(bGameInPLay = True) AND(Tilted = False) Then
-			If(bBallSaverActive = True) Then
+			If(bBallSaverActive = True OR Invincibility) Then
 				WriteLog("Function=Drain_Hit Note='bBallSaverActive is true.. launching a new ball'")
 				AddMultiball 1
 				bAutoPlunger = True
@@ -3586,35 +3633,7 @@ End Sub
 	Sub ResetNewBallLights() 'turn on or off the needed lights before a new ball is released
 		WriteLog("Function=ResetNewBallLights")
 		TurnOffPlayfieldLights()
-		TurnOnPlayfieldLights()
-		'Dim l
-		
-
-		'For each l in SPLLaneLights
-		'	l.state = 0
-		'Next
-
-		
-		'For each l in OrbitalLights
-		'	l.state = 0
-		'Next
-		
-		'For each l in TargetObjectiveLights
-		'	l.state = 0
-		'Next
-
-		'For each l in UpperDropTargetLights
-		'	l.state = 0
-		'Next
-
-		'For each l in LowerDropTargetLights
-		'	l.state = 0
-		'Next
-		
-		'For each l in PlayfieldObjectiveLights
-		'	l.state = 0
-		'Next
-		
+		'TurnOnPlayfieldLights()
 		'currentplayerbackglass
 	End Sub
 
@@ -3805,13 +3824,10 @@ End Sub
 			Select Case component.Name
 			'''''''''''''''TOP LANES''''''''''''''''
 			Case "TR_TopLaneLeft":
-				AddScore(5)
 				ToggleTopLane("S")
 			Case "TR_TopLaneCenter":
-				AddScore(5)
 				ToggleTopLane("P")
 			Case "TR_TopLaneRight":
-				AddScore(5)
 				ToggleTopLane("L")
 				
 				
@@ -3839,7 +3855,7 @@ End Sub
 				vpmtimer.AddTimer 250, "CheckLowerDropTargets() '"
 
 			'''''''''''''''SKILLSHOT''''''''''''''''				
-			Case "TR_SkillShot":
+			Case "GA_SkillShot":
 				If JackpotActive Then
 					'TODO NZ: award jackpot, flash lights, etc
 					AddScore(1000)
@@ -3868,6 +3884,7 @@ End Sub
 				
 				If RightLockballMode Then
 					WriteLog("Function KI_RightLockball Note='right lockball mode is enabled'")
+					AddScore(500)
 					L_MultiballLocked2.State = 1
 					CheckMultiBallReady
 					vpmtimer.addtimer 1000, "CreateNewBall true '"
@@ -3888,6 +3905,7 @@ End Sub
 				PuPlayer.LabelSet pBackglass,"lefttimer",BallsOnPlayfield,1,""
 				If LeftLockballMode Then
 					WriteLog("Function=KI_LeftLockball_Hit Note='lockball mode is enabled'")
+					AddScore(500)
 					L_MultiballLocked1.State = 1
 					CheckMultiBallReady
 					vpmtimer.addtimer 1000, "CreateNewBall true '"
@@ -3905,6 +3923,14 @@ End Sub
 				
 			Case "KI_Multiball":
 				If LeftLockballArmed AND RightLockballArmed Then
+					'TODO NZ: maybe move this into a subroutine
+					bMultiBallMode = true
+					SetLeftLockball false
+					SetRightLockball false
+					L_MultiballLocked2.State = 0
+					L_MultiballLocked1.State = 0
+					L_MultiballReady.State = 0
+					
 					WriteLog("Multiball activated!")
 					WriteLog("Balls on playfield at start of multiball = " & BallsOnPlayField)
 					'TODO NZ: dof/lights/go crazy
@@ -3931,7 +3957,7 @@ End Sub
 				PlaySoundAt SoundFXDOF("fx_bumper", 107, DOFPulse, DOFContactors), ActiveBall
 				DOF 110, DOFPulse
 				DOF 302, DOFPulse   'DOF MX - Bumper 1
-				AddScore(1)
+				AddScore(5)
 				BumperHitCount = BumperHitCount + 1
 				CheckBumperHitCount
 
@@ -3941,7 +3967,7 @@ End Sub
 				PlaySoundAt SoundFXDOF("fx_bumper", 109, DOFPulse, DOFContactors), ActiveBall
 				DOF 111, DOFPulse
 				DOF 303, DOFPulse   'DOF MX - Bumper 2
-				AddScore(1)
+				AddScore(5)
 				BumperHitCount = BumperHitCount + 1
 				CheckBumperHitCount
 
@@ -3950,7 +3976,7 @@ End Sub
 				PlaySoundAt SoundFXDOF("fx_bumper", 108, DOFPulse, DOFContactors), ActiveBall
 				DOF 112, DOFPulse
 				DOF 304, DOFPulse   'DOF MX - Bumper 3
-				AddScore(1)
+				AddScore(5)
 				BumperHitCount = BumperHitCount + 1
 				CheckBumperHitCount
 
@@ -3963,7 +3989,8 @@ End Sub
 					DOF 144, DOFPulse
 					DOF 313, DOFPulse   'DOF MX - Left Outer Lane
 				End If
-				AddScore 100
+				AddScore(25)
+				AddBonus(25)
 				If NOT Invincibility AND Not bBallSaverActive Then
 					SetRightOutlaneSaver(True)
 					vpmtimer.AddTimer 10000, "SetRightOutlaneSaver False '"
@@ -3978,7 +4005,8 @@ End Sub
 					DOF 144, DOFPulse
 					DOF 313, DOFPulse   'DOF MX - Left Outer Lane
 				End If
-				AddScore 100
+				AddScore(25)
+				AddBonus(25)
 				If NOT Invincibility AND Not bBallSaverActive Then
 					SetLeftOutlaneSaver(True)
 					vpmtimer.AddTimer 10000, "SetLeftOutlaneSaver False '"
@@ -3988,14 +4016,16 @@ End Sub
 			
 			Case "TR_LeftLockball":
 				'TODO NZ: dof/lights/etc
-				AddScore(100)
-				'AddBonus(100)
+				AddScore(50)
+				AddBonus(100)
 				
 
 			'''''''''''''''ORBITS''''''''''''''''
 			Case "GA_PowerupRamp":
 				If PowerupRampMode Then
 					StreamOrbitCount = StreamOrbitCount + 1
+					AddScore(150)
+					AddBonus(50)
 					Dim i
 					For i = 1 to StreamOrbitCount
 						OrbitalLights(i-1).State = 1
@@ -4043,6 +4073,8 @@ End Sub
 					If RightOutlaneSaverMode Then
 						vpmtimer.AddTimer 1000, "SetRightOutlaneSaver false '"
 					Else
+						AddScore(50)
+						AddBonus(50)
 						'assign points going to drain
 					End If
 					
@@ -4057,6 +4089,9 @@ End Sub
 						'play some music "you got saved!"
 						vpmtimer.AddTimer 1000, "SetLeftOutlaneSaver false '"
 					Else
+						AddScore(50)
+						AddBonus(50)
+						
 						'assign points, going to drain
 					End If
 					
@@ -4110,9 +4145,10 @@ End Sub
 
 '---------DROP TARGET HELPERS-----------
 	Sub CheckUpperDropTargets
-		If LeftLockballMode Then 'automatically re-raise targets if already in lockball mode
+		If LeftLockballMode OR bMultiBallMode Then 'automatically re-raise targets if already in lockball mode
 			WriteLog("Function=CheckUpperDropTargets Note='Left Lockball mode is armed, resetting immediately'")
 			ResetUpperDropTargets
+			'TODO NZ: dof/lights
 			AddScore(100)
 		Else 
 			If DT_UpperLeft.IsDropped = 1 AND DT_UpperCenter.IsDropped = 1 AND DT_UpperRight.IsDropped = 1 Then
@@ -4120,35 +4156,30 @@ End Sub
 				SetLeftLockball(true)
 				ResetUpperDropTargets
 				AddScore(50)
+				AddBonus(100)
 				'TODO NZ: dof to tell folks left kicker is lockable
 			Else
 				AddScore(10)
-				'WriteLog("Function=CheckUpperDropTargets Note='Not all targets are dropped'")
-				'WriteLog("Function=CheckUpperDropTargets DT_UpperLeft.IsDropped=" & DT_UpperLeft.IsDropped)
-				'WriteLog("Function=CheckUpperDropTargets DT_UpperCenter.IsDropped=" & DT_UpperCenter.IsDropped)
-				'WriteLog("Function=CheckUpperDropTargets DT_UpperRight.IsDropped=" & DT_UpperRight.IsDropped)
 			End If
 		End If
 	End Sub
 	
 	Sub CheckLowerDropTargets
-		If RightLockballMode Then 
+		If RightLockballMode or bMultiBallMode Then 
 			WriteLog("Function=CheckLowerDropTargets Note='Right Lockball mode is armed, resetting immediately'")
 			ResetLowerDropTargets
-			AddScore(100)
+			'TODO NZ: dof/lights
+			AddScore(10)
 		Else
 			If DT_LowerLeft.IsDropped = 1 AND DT_LowerCenter.IsDropped = 1 AND DT_LowerRight.IsDropped = 1 Then
 				WriteLog("Function=CheckLowerDropTargets Note='All targets are dropped'")
 				SetRightLockball(true)
 				ResetLowerDropTargets
 				AddScore(50)
+				AddBonus(100)
 				'TODO NZ: dof to tell folks left kicker is lockable
 			Else
 				AddScore(10)
-				'WriteLog("Function=CheckUpperDropTargets Note='Not all targets are dropped'")
-				'WriteLog("Function=CheckUpperDropTargets DT_UpperLeft.IsDropped=" & DT_UpperLeft.IsDropped)
-				'WriteLog("Function=CheckUpperDropTargets DT_UpperCenter.IsDropped=" & DT_UpperCenter.IsDropped)
-				'WriteLog("Function=CheckUpperDropTargets DT_UpperRight.IsDropped=" & DT_UpperRight.IsDropped)
 			End If
 		End If
 	End Sub
@@ -4225,7 +4256,7 @@ End Sub
 		BallsOnPlayField = BallsOnPlayField + 1
 		PuPlayer.LabelSet pBackglass,"lefttimer",BallsOnPlayfield,1,""		
 		SetRightLockballDT false
-		vpmtimer.addtimer 500, "SetRightLockballDT true '"
+		vpmtimer.addtimer 1000, "SetRightLockballDT true '"
 		KI_RightLockball.Kick 180,20
 		RightLockballArmed = false
 	End Sub
@@ -4260,7 +4291,8 @@ End Sub
 
 	Sub ObtainTargetObjective(objectiveNumber)
 		WriteLog("Function=ObtainTargetObjective ObjectiveNumber="  & objectiveNumber)
-		'TODO NZ: fix this object reference'
+		AddScore(25)
+		AddBonus(15)
 		TargetObjectiveLights(objectiveNumber).State = 1
 		TargetObjectives(objectiveNumber) = 1
 		Dim isTargetObjectiveAchieved'
@@ -4277,7 +4309,7 @@ End Sub
 			WriteLog("Function=ObtainTargetObjective Note='Target objectives complete, setting jackpot to true'")
 			SetJackpot true
 			ObtainPlayfieldObjective(TargetsPlayfieldObjective)
-			AddScore(1000)
+			AddBonus(50)
 			ResetTargetObjectives
 				
 			'TODO NZ: dof/lights/etc
@@ -4313,10 +4345,9 @@ End Sub
 		WriteLog("Function=SetLeftOutlaneSaver mode=" & mode)
 		LeftOutlaneSaverMode = mode
 		If mode Then
-			
 			KI_LeftOutlaneSaver.Enabled = mode
+			L_LeftOutlane.State = 1
 			If Not Invincibility Then
-				L_LeftOutlane.State = 1
 				'TODO NZ: turn on light, play sound, dof
 			End If
 		Else
@@ -4335,23 +4366,22 @@ End Sub
 		
 		'TODO NZ: turn on light, play sound, dof
 		If mode Then
-			If Not Invincibility Then
-				L_RightOutlane.State = 1
-				'Play sound
-			End If
+			L_RightOutlane.State = 1
 			FL_RightOutlaneSaver.RotateToEnd
-			
+			If Not Invincibility Then				
+				'Play sound
+			End If			
 		Else
 			If Not Invincibility Then
 				L_RightOutlane.State = 0
+				FL_RightOutlaneSaver.RotateToStart
 				'Play sound
 			End If
-			FL_RightOutlaneSaver.RotateToStart
-			
 		End If
 	End Sub
 	
 	Sub ToggleTopLane(laneLetter)
+		AddScore(50) '50GB every time a lane is hit
 		Select Case laneLetter
 		Case "S":
 			If L_SLight.State = 0 Then 
@@ -4380,7 +4410,7 @@ End Sub
 			L_SLight.State = 0
 			L_PLight.State = 0
 			L_LLight.State = 0
-			AddScore(100)
+			AddScore(250)
 			If BonusMultiplier(CurrentPlayer) < MaxMultiplier Then
 				BonusMultiplier(CurrentPlayer) = BonusMultiplier(CurrentPlayer) + 1
 				'TODO NZ: Show some info on the backglass or DMD
@@ -4405,19 +4435,20 @@ End Sub
 		Invincibility = True
 		SetLeftOutlaneSaver(true)
 		SetRightOutlaneSaver(true)
-		L_InvincibleMode.State = 1
+		L_InvincibleMode.State = 2
 		'vpmtimer..... DeactivateInvincibility
 		vpmTimer.AddTimer (seconds*1000), "DeactivateInvincibility() '"
 	End Sub
 	
 	Sub DeactivateInvincibility 
 		WriteLog("Function=DeactivateInvincibility")
+		Invincibility = False
 		'Order is important.  If invincibility is set to off, then the saver toggles will make sounds
 		L_InvincibleMode.State = 0
 
 		SetLeftOutlaneSaver(false)
 		SetRightOutlaneSaver(false)		
-		Invincibility = False
+		
 		'TODO NZ: lights/dof, 
 	End Sub
 	
