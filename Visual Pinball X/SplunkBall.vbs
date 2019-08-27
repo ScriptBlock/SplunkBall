@@ -516,7 +516,7 @@ End Sub
 		
 		GiOff
 		PuPlayer.SendMSG "{ ""mt"":301, ""SN"": 2, ""FN"":4, ""FS"":1 }"
-		StartAttractMode
+		'StartAttractMode
 	End Sub
 
 
@@ -1147,9 +1147,9 @@ End Sub
 		WriteLog("Function=ResetForNewGame")
 		Dim i
 		bGameInPLay = True
-		StopAttractMode
+		'StopAttractMode
 		'GiOn
-		GiOff
+		'GiOff
 		TotalGamesPlayed = TotalGamesPlayed + 1
 		SaveGamesPlayed
 		CurrentPlayer = 1
@@ -1175,7 +1175,7 @@ End Sub
 		PuPlayer.playlistplayex pMusic,"audioclear","clear.mp3",100, 1
 		pNote "GAME OVER","PLAY AGAIN"
 		PuPlayer.playlistplayex pBackglass,"videogameover","",100,1
-		StartAttractMode
+		'StartAttractMode
 		IntroPosition = 0
 		bGameInPlay = False
 		bJustStarted = False
@@ -2161,7 +2161,7 @@ End Sub
 		LS_Attract2.StopPlay
 		StopRainbow alights
 		StopAltRainbow GI
-		ResetAllLightsColor
+		'ResetAllLightsColor
 		IntroMover.enabled = false
 		
 	'StopSong
@@ -3575,10 +3575,18 @@ End Sub
 		Next
 	End Sub
 
+	Sub TurnOnPlayfieldLights()
+		WriteLog("Function=TurnOnPlayfieldLights")
+		Dim a
+		For each a in alights
+			a.State = 1
+		Next
+	End Sub
+	
 	Sub ResetNewBallLights() 'turn on or off the needed lights before a new ball is released
 		WriteLog("Function=ResetNewBallLights")
 		TurnOffPlayfieldLights()
-		
+		TurnOnPlayfieldLights()
 		'Dim l
 		
 
