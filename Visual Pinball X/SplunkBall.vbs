@@ -113,6 +113,13 @@
 	Const TargetObjectiveD = 3
 	Const TargetObjectiveE = 4
 
+	Const UDMDScoreBackground = "Green-Splunk-Background.png"
+	Const UDMDBlackBackground = "Solid-Black.jpg"
+	
+	
+	'Const SplunkPurple = RGB(235, 0, 140)
+	'Const SplunkOrange = RGB(249, 157, 28)
+	'Const SplunkGreen = RGB(107, 171,64)
 	
 	' Define Global Variables
 
@@ -150,6 +157,7 @@
 	Dim BallsInHole
 	Dim bFreePlay
 	Dim bGameInPlay
+	Dim bBallInPlay
 	Dim bOnTheFirstBall
 	Dim bBallInPlungerLane
 	Dim bBallSaverActive
@@ -199,7 +207,7 @@
 	TurnOnUltraDMD = 0 ' change to 1 to turn on ultradmd
 	TopperVideo = 0 'set to 1 to turn on the topper
 	'BallRollerOn = 0 ' set to 0 to turn off the ball roller if you use the "c" key in your cabinet
-	
+	TotalGamesPlayed = -1
 	
 	BeginLogging
 	Sub BeginLogging
@@ -210,7 +218,7 @@
 	End Sub
 	
 	Sub WriteLog(words) 
-		LoggingQueue.Enqueue(Now & ": " & words)
+		LoggingQueue.Enqueue(Now & ": GameID=" & TotalGamesPlayed & " " & words)
 	End Sub
 
 	Sub LoggingTimer_Timer
@@ -487,6 +495,7 @@ End Sub
 
 	'UMLD
 	Sub Table1_Init()
+		'BeginLogging
 		WriteLog("Table1_Init Called")
 		Randomize
 
@@ -501,6 +510,7 @@ End Sub
 		bBallSaverActive = False
 		bBallSaverReady = False
 		bMultiBallMode = False
+		bBallInPlay = False
 		bGameInPlay = False
 		bAutoPlunger = False
 		bMusicOn = True
@@ -570,11 +580,20 @@ End Sub
 '		End If
 		
 		'Ball control 
-		If KeyCode = 203 Then bcleft = 1 ' Left Arrow
-		If KeyCode = 200 Then bcup = 1 ' Up Arrow
-		If KeyCode = 208 Then bcdown = 1 ' Down Arrow
-		If KeyCode = 205 Then bcright = 1 ' Right Arrow
+		'If KeyCode = 203 Then bcleft = 1 ' Left Arrow
+		'If KeyCode = 200 Then bcup = 1 ' Up Arrow
+		'If KeyCode = 208 Then bcdown = 1 ' Down Arrow
+		'If KeyCode = 205 Then bcright = 1 ' Right Arrow
 
+		If KeyCode = 203 Then
+			StartInvincibleSeq
+		End If
+
+		If KeyCode = 205 Then
+			StopInvincibleSeq
+		End If
+
+		
 
 		If KeyCode = PlungerKey Then
 			PlaySoundAt "fx_plungerpull", Plunger
@@ -678,10 +697,10 @@ End Sub
 
 	Sub Table1_KeyUp(ByVal KeyCode)
 		'Manual Ball Control
-		If KeyCode = 203 then bcleft = 0 ' Left Arrow
-		If KeyCode = 200 then bcup = 0 ' Up Arrow
-		If KeyCode = 208 then bcdown = 0 ' Down Arrow
-		If KeyCode = 205 then bcright = 0 ' Right Arrow
+		'If KeyCode = 203 then bcleft = 0 ' Left Arrow
+		'If KeyCode = 200 then bcup = 0 ' Up Arrow
+		'If KeyCode = 208 then bcdown = 0 ' Down Arrow
+		'If KeyCode = 205 then bcright = 0 ' Right Arrow
 
 		If KeyCode = PlungerKey Then
 			PlaySoundAt "fx_plunger", Plunger
@@ -1047,7 +1066,8 @@ End Sub
 	'End Sub
 
 	Sub Targets_Hit (idx)
-		PlaySound "target", 0, Vol(ActiveBall), AudioPan(ActiveBall), 0, Pitch(ActiveBall), 0, 0, AudioFade(ActiveBall)
+		'PlaySound "TargetHit", 0, Vol(ActiveBall), AudioPan(ActiveBall), 0, Pitch(ActiveBall), 0, 0, AudioFade(ActiveBall)
+		PlaySoundAt "TargetHit", Targets(idx)
 		'WriteLog("A Target was hit - " & idx)
 		'WriteLog("TargetName = " & Targets(idx).Name)
 	End Sub
@@ -1181,6 +1201,7 @@ End Sub
 		bGameInPlay = False
 		bJustStarted = False
 		GiOff
+		RulesHelperOn
 	End Sub
 
 
@@ -1202,15 +1223,19 @@ End Sub
 
 	' DMD using UltraDMD calls
 
-	Sub DMD(background, toptext, bottomtext, duration)
+	Sub DMD(background, toptext, bottomtext, duration, showScore)
 		If TurnOnUltraDMD = 0 Then exit sub
 		UltraDMD.DisplayScene00 background, toptext, 15, bottomtext, 15, 14, duration, 14
-		UltraDMDTimer.Enabled = 1 'to show the score after the animation/message
+		If showScore Then
+			UltraDMDTimer.Enabled = 1 'to show the score after the animation/message
+		End If
 	End Sub
+
+
 
 	Sub DMDScore
 		If TurnOnUltraDMD = 0 then exit sub
-		UltraDMD.SetScoreboardBackgroundImage "scoreboard-background.jpg", 15, 7
+		UltraDMD.SetScoreboardBackgroundImage UDMDScoreBackground, 15, 7
 		UltraDMD.DisplayScoreboard PlayersPlayingGame, CurrentPlayer, Score(1), Score(2), Score(3), Score(4), "Player " & CurrentPlayer, "Ball " & Balls
 	End Sub
 
@@ -1218,6 +1243,14 @@ End Sub
 		If TurnOnUltraDMD = 0 then exit sub
 		DMDFlush
 		DMDScore
+	End Sub
+	
+	Sub DMDScroll(background, wordstop, wordsbottom, duration, showScore)
+		If TurnOnUltraDMD = 0 then exit sub
+		UltraDMD.DisplayScene00 background, wordstop, 15, wordsbottom, -1, 10, duration, 9
+		If showScore Then
+			UltraDMDTimer.Enabled = 1 'to show the score after the animation/message
+		End If
 	End Sub
 
 	Sub DMDFLush
@@ -1665,25 +1698,25 @@ End Sub
 		WriteLog("Function=LoadHighScore")
 		Dim x
 		x = LoadValue(TableName, "HighScore1")
-		If(x <> "") Then HighScore(0) = CDbl(x) Else HighScore(0) = 1300000 End If
+		If(x <> "") Then HighScore(0) = CDbl(x) Else HighScore(0) = 40 End If
 
 		x = LoadValue(TableName, "HighScore1Name")
 		If(x <> "") Then HighScoreName(0) = x Else HighScoreName(0) = "NO1" End If
 
 		x = LoadValue(TableName, "HighScore2")
-		If(x <> "") then HighScore(1) = CDbl(x) Else HighScore(1) = 1200000 End If
+		If(x <> "") then HighScore(1) = CDbl(x) Else HighScore(1) = 30 End If
 
 		x = LoadValue(TableName, "HighScore2Name")
 		If(x <> "") then HighScoreName(1) = x Else HighScoreName(1) = "NO2" End If
 
 		x = LoadValue(TableName, "HighScore3")
-		If(x <> "") then HighScore(2) = CDbl(x) Else HighScore(2) = 1100000 End If
+		If(x <> "") then HighScore(2) = CDbl(x) Else HighScore(2) = 20 End If
 
 		x = LoadValue(TableName, "HighScore3Name")
 		If(x <> "") then HighScoreName(2) = x Else HighScoreName(2) = "NO3" End If
 
 		x = LoadValue(TableName, "HighScore4")
-		If(x <> "") then HighScore(3) = CDbl(x) Else HighScore(3) = 1000000 End If
+		If(x <> "") then HighScore(3) = CDbl(x) Else HighScore(3) = 10 End If
 
 		x = LoadValue(TableName, "HighScore4Name")
 		If(x <> "") then HighScoreName(3) = x Else HighScoreName(3) = "NO4" End If
@@ -1860,6 +1893,7 @@ End Sub
 					hsCurrentDigit = hsCurrentDigit -1
 				Else
 					AssignLetter
+					hsbModeActive = False
 					vpmtimer.addtimer 700, "HighScoreCommitName()'"
 					PuPlayer.playlistplayex pBackglass,"videobarb","clear.mov",100,7
 				End If
@@ -1895,87 +1929,7 @@ End Sub
 		if hscurrentdigit = 3 Then
 			hsdigit = 3
 		End If
-		'TODO NZ: make sure this works
 		hsEnteredDigits(hsDigit) = letterArray(hsletter)
-'		If hsletter = 1 Then 
-'			hsEnteredDigits(hsdigit) = "A"
-'		End If
-'		If hsletter = 2 Then 
-'			hsEnteredDigits(hsdigit) = "B"
-'		End If
-'		If hsletter = 3 Then 
-'			hsEnteredDigits(hsdigit) = "C"
-'		End If
-'		If hsletter = 4 Then 
-'			hsEnteredDigits(hsdigit) = "D"
-'		End If
-'		If hsletter = 5 Then 
-'			hsEnteredDigits(hsdigit) = "E"
-'		End If
-'		If hsletter = 6 Then 
-'			hsEnteredDigits(hsdigit) = "F"
-'		End If
-'		If hsletter = 7 Then 
-'			hsEnteredDigits(hsdigit) = "G"
-'		End If
-'		If hsletter = 8 Then 
-'			hsEnteredDigits(hsdigit) = "H"
-'		End If
-'		If hsletter = 9 Then 
-'			hsEnteredDigits(hsdigit) = "I"
-'		End If
-'		If hsletter = 10 Then 
-'			hsEnteredDigits(hsdigit) = "J"
-'		End If
-'		If hsletter = 11 Then 
-'			hsEnteredDigits(hsdigit) = "K"
-'		End If
-'		If hsletter = 12 Then 
-'			hsEnteredDigits(hsdigit) = "L"
-'		End If
-'		If hsletter = 13 Then 
-'			hsEnteredDigits(hsdigit) = "M"
-'		End If
-'		If hsletter = 14 Then 
-'			hsEnteredDigits(hsdigit) = "N"
-'		End If
-'		If hsletter = 15 Then 
-'			hsEnteredDigits(hsdigit) = "O"
-'		End If
-'		If hsletter = 16 Then 
-'			hsEnteredDigits(hsdigit) = "P"
-'		End If
-'		If hsletter = 17 Then 
-'			hsEnteredDigits(hsdigit) = "Q"
-'		End If
-'		If hsletter = 18 Then 
-'			hsEnteredDigits(hsdigit) = "R"
-'		End If
-'		If hsletter = 19 Then 
-'			hsEnteredDigits(hsdigit) = "S"
-'		End If
-'		If hsletter = 20 Then 
-'			hsEnteredDigits(hsdigit) = "T"
-'		End If
-'		If hsletter = 21 Then 
-'			hsEnteredDigits(hsdigit) = "U"
-'		End If
-'		If hsletter = 22 Then 
-'			hsEnteredDigits(hsdigit) = "V"
-'		End If
-'		If hsletter = 23 Then 
-'			hsEnteredDigits(hsdigit) = "W"
-'		End If
-'		If hsletter = 24 Then 
-'			hsEnteredDigits(hsdigit) = "X"
-'		End If
-'		If hsletter = 25 Then 
-'			hsEnteredDigits(hsdigit) = "Y"
-'		End If
-'		If hsletter = 26 Then 
-'			hsEnteredDigits(hsdigit) = "Z"
-'		End If
-'
 	End Sub
 
 	Sub HighScorelabels
@@ -1989,118 +1943,7 @@ End Sub
 
 	Sub HighScoreDisplayName()
 		WriteLog("Function=HighScoreDisplayName")
-		'TODO NZ: Make sure this works
 		PuPlayer.LabelSet pBackglass,"HighScoreL" & hsCurrentDigit, letterArray(hsLetter), 1, ""
-		'Select case hsLetter
-		'Case 0
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","<",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","<",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","<",1,""
-		'Case 1
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","A",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","A",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","A",1,""
-		'Case 2
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","B",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","B",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","B",1,""
-		'Case 3
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","C",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","C",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","C",1,""
-		'Case 4
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","D",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","D",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","D",1,""
-		'Case 5
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","E",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","E",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","E",1,""
-		'Case 6
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","F",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","F",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","F",1,""
-		'Case 7
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","G",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","G",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","G",1,""
-		'Case 8
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","H",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","H",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","H",1,""
-		'Case 9
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","I",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","I",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","I",1,""
-		'Case 10
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","J",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","J",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","J",1,""
-		'Case 11
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","K",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","K",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","K",1,""
-		'Case 12
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","L",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","L",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","L",1,""
-		'Case 13
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","M",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","M",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","M",1,""
-		'Case 14
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","N",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","N",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","N",1,""
-		'Case 15
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","O",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","O",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","O",1,""
-		'Case 16
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","P",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","P",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","P",1,""
-		'Case 17
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","Q",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","Q",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","Q",1,""
-		'Case 18
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","R",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","R",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","R",1,""
-		'Case 19
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","S",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","S",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","S",1,""
-		'Case 20
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","T",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","T",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","T",1,""
-		'Case 21
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","U",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","U",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","U",1,""
-		'Case 22
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","V",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","V",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","V",1,""
-		'Case 23
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","W",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","W",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","W",1,""
-		'Case 24
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","X",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","X",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","X",1,""
-		'Case 25
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","Y",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","Y",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","Y",1,""
-		'Case 26
-		'	if(hsCurrentDigit = 1) then PuPlayer.LabelSet pBackglass,"HighScoreL1","Z",1,""
-		'	if(hsCurrentDigit = 2) then PuPlayer.LabelSet pBackglass,"HighScoreL2","Z",1,""
-		'	if(hsCurrentDigit = 3) then PuPlayer.LabelSet pBackglass,"HighScoreL3","Z",1,""
-		'End Select
 	End Sub
 
 	' post the high score letters
@@ -2164,7 +2007,8 @@ End Sub
 		LS_Attract2.StopPlay
 		StopRainbow alights
 		StopAltRainbow GI
-		ResetAllLightsColor
+		ResetAllLights
+		TurnOffPlayfieldLights
 		IntroMover.enabled = false
 		
 	'StopSong
@@ -2262,7 +2106,7 @@ End Sub
 	' in this table this colors are use to keep track of the progress during the acts and battles
 
 	'colors
-	Dim red, orange, amber, yellow, darkgreen, green, blue, darkblue, purple, white, base
+	Dim red, orange, amber, yellow, darkgreen, green, blue, darkblue, purple, white, base, splunk
 
 	red = 10
 	orange = 9
@@ -2275,8 +2119,9 @@ End Sub
 	purple = 2
 	white = 1
 	base = 11
+	splunk = 12
 
-	Sub SetLightColor(n, col, state)
+	Sub SetLightColor(n, col, state, intensity)
 		Select Case col
 			Case red
 				n.color = RGB(255, 0, 0)
@@ -2312,82 +2157,107 @@ End Sub
 				n.color = RGB(255, 252, 224)
 				n.colorfull = RGB(193, 91, 0)
 			Case base
-				n.color = RGB(255, 197, 143)
-				n.colorfull = RGB(255, 255, 236)
+				n.color = RGB(255, 255, 255)
+				n.colorfull = RGB(0, 0, 0)
+			Case splunk
+				n.color = RGB(107, 171,64)
+				n.colorfull = RGB(107, 171,64)
 		End Select
 		If state <> -1 Then
 			n.State = 0
 			n.State = state
 		End If
+		
+		If intensity <> -1 Then
+			n.Intensity = 0
+			n.Intensity = intensity
+		End If
 	End Sub
 
-	Sub ResetAllLightsColor ' Called at a new game
-		WriteLog("Function=ResetAllLightsColor")
-		'TODO NZ: fix this
-		'SetLightColor l13, red, -1		
-		'L_SLight.color = RGB(255,0,0):L_SLight.colorfull = RGB(255,0,0)
-		'L_PLight.color = RGB(255,0,0):L_PLight.colorfull = RGB(255,0,0)
-		'L_LLight.color = RGB(255,0,0):L_LLight.colorfull = RGB(255,0,0)
+	Sub ResetAllLights ' Called at a new game
+		WriteLog("Function=ResetAllLights")
+		ResetAllPlayfieldLights
+		ResetAllFlashers
+		ResetGI
+	End Sub
+	
+	Sub ResetAllPlayfieldLights
+		SetLightColor L_SLight, red, 1, 6 
+		SetLightColor L_PLight, red, 1, 6
+		SetLightColor L_LLight, red, 1, 6 
 		
-		'''''''''''''''''''  Playfield Lights '''''''''''''''''''''
+		SetLightColor L_StreamOrbital1, darkgreen, 1, 30
+		SetLightColor L_StreamOrbital2, darkgreen, 1, 30
+		SetLightColor L_StreamOrbital3, darkgreen, 1, 30
 		
-		SetLightColor L_SLight, red, 1
-		SetLightColor L_PLight, red, 1
-		SetLightColor L_LLight, red, 1
+		SetLightColor L_BumperLeft, green, 1, 10
+		SetLightColor L_BumperRight, green, 1, 10
+		SetLightColor L_BumperLower, green, 1, 10
 		
-		SetLightColor L_StreamOrbital1, darkgreen, 1
-		SetLightColor L_StreamOrbital2, darkgreen, 1
-		SetLightColor L_StreamOrbital3, darkgreen, 1
+		SetLightColor L_DT_UpperLeft, red, 1, 15
+		SetLightColor L_DT_UpperRight, red, 1, 15
+		SetLightColor L_DT_UpperCenter, red, 1, 15
 		
-		SetLightColor L_BumperLeft, green, 1
-		SetLightColor L_BumperRight, green, 1
-		SetLightColor L_BumperLower, green, 1
+		SetLightColor L_DT_LowerLeft, blue, 1, 20
+		SetLightColor L_DT_LowerCenter, blue, 1, 20
+		SetLightColor L_DT_LowerRight, blue, 1, 20
 		
-		SetLightColor L_DT_UpperLeft, red, 1
-		SetLightColor L_DT_UpperRight, red, 1
-		SetLightColor L_DT_UpperCenter, red, 1
+		SetLightColor L_ObjectiveA, yellow, 1, 15
+		SetLightColor L_ObjectiveB, yellow, 1, 15
+		SetLightColor L_ObjectiveC, yellow, 1, 15
+		SetLightColor L_ObjectiveD, yellow, 1, 15
+		SetLightColor L_ObjectiveE, yellow, 1, 15
 		
-		SetLightColor L_DT_LowerLeft, blue, 1
-		SetLightColor L_DT_LowerCenter, blue, 1
-		SetLightColor L_DT_LowerRight, blue, 1
+		SetLightColor L_LowerObjectiveAchieved, green, 1, 15
+		SetLightColor L_UpperObjectiveAchieved, green, 1, 15
+		SetLightColor L_StreamOrbitAchieved, green, 1, 15
+		SetLightColor L_AllTargetsAchieved, green, 1, 15
 		
-		SetLightColor L_ObjectiveA, yellow, 1
-		SetLightColor L_ObjectiveB, yellow, 1
-		SetLightColor L_ObjectiveC, yellow, 1
-		SetLightColor L_ObjectiveD, yellow, 1
-		SetLightColor L_ObjectiveE, yellow, 1
+		SetLightColor L_InvincibleMode, yellow, 1, 15
 		
-		SetLightColor L_LowerObjectiveAchieved, green, 1
-		SetLightColor L_UpperObjectiveAchieved, green, 1
-		SetLightColor L_StreamOrbitAchieved, green, 1
-		SetLightColor L_AllTargetsAchieved, green, 1
+		SetLightColor L_LeftOutlane, blue, 2, 30
+		SetLightColor L_RightOutlane, blue, 2, 30
 		
-		SetLightColor L_InvincibleMode, yellow, 1
+		SetLightColor L_LowerLockballGate, purple, 1, 15
+		SetLightColor L_RightLockballReady, purple, 2, 15
 		
-		SetLightColor L_LeftOutlane, blue, 2
-		SetLightColor L_RightOutlane, blue, 2
+		SetLightColor L_LeftLockballReady, purple, 2, 15
 		
-		SetLightColor L_LowerLockballGate, purple, 1
-		SetLightColor L_RightLockballReady, purple, 2
+		SetLightColor L_MultiballLocked1, amber, 1, 20
+		SetLightColor L_MultiballLocked2, amber, 1, 20
 		
-		SetLightColor L_LeftLockballReady, purple, 2
+		SetLightColor L_MultiballReady, darkblue, 2, 10
 		
-		SetLightColor L_MultiballLocked1, amber, 1
-		SetLightColor L_MultiballLocked2, amber, 1
+		SetLightColor L_JackpotReady, blue, 2, 20
+	End Sub
+	
+	Sub ResetAllFlashers
+		Dim l
 		
-		SetLightColor L_MultiballReady, darkblue, 2
+		For Each l in F_GreenLights
+			SetLightColor l, splunk, 0, 20
+		Next
 		
-		SetLightColor L_JackpotReady, blue, 2
-		
+		For Each l in F_BlueLights
+			SetLightColor l, blue, 0, 20
+		Next
+
+		For Each l in F_RedLights
+			SetLightColor l, red, 0, 20
+		Next
+	
+	
+	End Sub
+	
+	Sub ResetGI
+		Dim l
+
 		'''''''''''''''''''  GI Lights '''''''''''''''''''''
-		
-		
-		
-		
+		For Each l in GI
+			SetLightColor l, base, 1, 30
+		Next
 	End Sub
-
-	Sub UpdateBonusColors
-	End Sub
+		
 
 	'*************************
 	' Rainbow Changing Lights
@@ -2448,7 +2318,7 @@ End Sub
 		AltRainbowTimer.Enabled = 0
 		Dim l
 		For Each l in AltRainbowLights
-			SetLightColor l, white, -1
+			SetLightColor l, white, -1, -1
 			l.State = 1			
 			l.Intensity = LightIntensityQueue(1).Dequeue()
 		Next
@@ -2799,7 +2669,26 @@ End Sub
 		LS_Skillshot.Play SeqAllOff
 	End Sub
 
-
+	Sub LS_Invincible_PlayDone()
+		LS_Invincible.Play SeqCircleInOff, 25, 1
+		LS_Invincible.Play SeqCircleInOn, 25, 1
+	End Sub
+	
+	Sub StartInvincibleSeq() 
+		Dim l
+		For Each l in GI
+			SetLightColor l, splunk, -1, 50
+		Next
+		LS_Invincible.UpdateInterval = 6
+		LS_Invincible.Play SeqCircleInOff, 25, 1
+		LS_Invincible.Play SeqCircleInOn, 25, 1
+	End Sub
+	
+	Sub StopInvincibleSeq()
+		LS_Invincible.StopPlay
+		'LS_Invincible.Play SeqAllOff
+		ResetGI
+	End Sub
 
 	'**********************
 	'     GI effects
@@ -2815,7 +2704,7 @@ End Sub
 	Sub ChangeGi(col) 'changes the gi color
 		Dim bulb
 		For each bulb in GI
-			SetLightColor bulb, col, -1
+			SetLightColor bulb, col, -1, -1
 		Next
 	End Sub
 
@@ -2837,7 +2726,7 @@ End Sub
 		DOF 126, DOFOn
 		Dim bulb
 		For each bulb in GI
-			SetLightColor bulb, base, -1
+			SetLightColor bulb, base, -1, -1
 			bulb.State = 1
 		Next
 	End Sub
@@ -2926,21 +2815,21 @@ End Sub
 	Sub FlashEffect(n)
 		Select case n
 			Case 0 ' all off
-				LightSeqFlasher.Play SeqAlloff
+				LS_Flasher.Play SeqAlloff
 			Case 1 'all blink
-				LightSeqFlasher.UpdateInterval = 4
-				LightSeqFlasher.Play SeqBlinking, , 5, 100
+				LS_Flasher.UpdateInterval = 10
+				LS_Flasher.Play SeqBlinking, , 5, 40
 			Case 2 'random
-				LightSeqFlasher.UpdateInterval = 10
-				LightSeqFlasher.Play SeqRandom, 5, , 1000
+				LS_Flasher.UpdateInterval = 10
+				LS_Flasher.Play SeqRandom, 5, , 1000
 			Case 3 'upon
-				LightSeqFlasher.UpdateInterval = 4
-				LightSeqFlasher.Play SeqUpOn, 10, 1
+				LS_Flasher.UpdateInterval = 4
+				LS_Flasher.Play SeqUpOn, 10, 1
 			Case 4 ' left-right-left
-				LightSeqFlasher.UpdateInterval = 5
-				LightSeqFlasher.Play SeqLeftOn, 10, 1
-				LightSeqFlasher.UpdateInterval = 5
-				LightSeqFlasher.Play SeqRightOn, 10, 1
+				LS_Flasher.UpdateInterval = 5
+				LS_Flasher.Play SeqLeftOn, 10, 1
+				LS_Flasher.UpdateInterval = 5
+				LS_Flasher.Play SeqRightOn, 10, 1
 			Case 5 ' top flashers blink fast
 		End Select
 	End Sub
@@ -3002,7 +2891,7 @@ End Sub
 ' X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  
 
 	Sub AddScore(points)
-		WriteLog("Function=AddScore Param=" & points)
+		WriteLog("Function=AddScore points=" & points)
 		If(Tilted = False) Then
 			' add the points to the current players score variable
 			Score(CurrentPlayer) = Score(CurrentPlayer) + points
@@ -3012,8 +2901,11 @@ End Sub
 	End Sub
 	
 	Sub AddBonus(points)
-		'TODO NZ: This stuff
-		
+		WriteLog("Function=AddBonus points=" & points)
+		If(Tilted = False) Then
+			BonusPoints(CurrentPlayer) = BonusPoints(CurrentPlayer) + points
+		End If
+		'TODO NZ: This stuff		
 	End Sub
 
 	'TODO NZ: reimplment this
@@ -3022,8 +2914,8 @@ End Sub
 		If NOT bExtraBallWonThisBall Then
 			LightShootAgain.State = 1
 			'flashflash.Enabled = True
-			LightSeqFlasher.UpdateInterval = 150
-			LightSeqFlasher.Play SeqRandom, 10, , 10000
+			LS_Flasher.UpdateInterval = 150
+			LS_Flasher.Play SeqRandom, 10, , 10000
 			ExtraBallsAwards(CurrentPlayer) = ExtraBallsAwards(CurrentPlayer) + 1
 			bExtraBallWonThisBall = True
 			DOF 402, DOFPulse   'DOF MX - Extra Ball
@@ -3097,6 +2989,7 @@ End Sub
 	Sub FirstBall()
 		WriteLog("Function=FirstBall")
 		WriteLog("Function=FirstBall Calling=ResetForNewPlayerBall")
+		RulesHelperOff
 		ResetForNewPlayerBall()
 		WriteLog("Function=FirstBall Calling=CreateNewBall")
 		CreateNewBall false
@@ -3105,32 +2998,41 @@ End Sub
 
 	Sub ResetForNewPlayerBall()
 		WriteLog("Function=ResetForNewPlayerBall")
-		PuPlayer.playresume 4
+		'PuPlayer.playresume 4
 		Dim vpFile, apFile
 		If PlayersPlayingGame > 1 Then
 			WriteLog("Function=ResetForNewPlayerBall Note='More than 1 player in the game'")
-			vpFile = "player" & CurrentPlayer & "sm.mov"
-			apFile = "player" & CurrentPlayer & ".wav"
+			'TODO NZ: fix these sounds
+			'vpFile = "player" & CurrentPlayer & "sm.mov"
+			'apFile = "player" & CurrentPlayer & ".wav"
 			
-			If CurrentPlayer = 1 Then
-				vpFile = "player" & CurrentPlayer & "sm1.mov"
-			End If
+			'If CurrentPlayer = 1 Then
+			'	vpFile = "player" & CurrentPlayer & "sm1.mov"
+			'End If
 
-			PuPlayer.playlistplayex pBackglass,"videoplayers",vpFile,40,1
-			PuPlayer.playlistplayex pCallouts,"audiocallouts",apFile,70,1
-			ChillOutTheMusic
+			'PuPlayer.playlistplayex pBackglass,"videoplayers",vpFile,40,1
+			'PuPlayer.playlistplayex pCallouts,"audiocallouts",apFile,70,1
+			'ChillOutTheMusic
 		Else
 			WriteLog("Function=ResetForNewPlayerBall Note='Single Player Game'")
 			pNote "BALL " & Balls,"LAUNCH BALL"
+			'TODO NZ: fix these sounds
+			PlaySoundAt "NewBallInPlungerLane", TR_BallLaunch
 			'PlaySound "flute"
-			PuPlayer.playlistplayex pCallouts,"audiocallouts","oneplayergame.wav",70,1
+			'PuPlayer.playlistplayex pCallouts,"audiocallouts","oneplayergame.wav",70,1
 		End If
 		AddScore 0
+		
+		'TODO NZ: remove/clean this when dmd is used
+		PuPlayer.LabelSet pBackglass,"notetitle","",1,""
+		PuPlayer.LabelSet pBackglass,"notecopy","",1,""
+
 		ResetTableElements
 		ResetNewBallLights
 		ResetNewBallVariables
 		
-		'TODO NZ: Evaluate how this gets used
+		FlashEffect 1
+		
 		
 	End Sub
 
@@ -3187,14 +3089,57 @@ End Sub
 
 	Sub EndOfBall()
 		PuPlayer.playlistplayex pAudio,"audiomultiballs","clear.mp3",100,1
-
-
+		ScoreBonusState = 0
+		ScoreBonus
 		bMultiBallMode = False
 		bOnTheFirstBall = False
-		vpmtimer.addtimer 500, "EndOfBall2 '"
+		'vpmtimer.addtimer 500, "EndOfBall2 '"
 
 	End Sub
 
+	Dim ScoreBonusState 
+	
+	Sub ScoreBonus()
+		
+		Select Case ScoreBonusState
+		Case 0:
+			PuPlayer.LabelSet pBackglass,"notetitle","Bonus Multiplier",1,""
+			PuPlayer.LabelSet pBackglass,"notecopy",BonusMultiplier(CurrentPlayer),1,""
+			DMD UDMDBlackBackground, "Bonus Multiplier", BonusMultiplier(CurrentPlayer), 500, false
+			PlaySound "BonusCalculationSoundA"
+			vpmtimer.addtimer 2000, "ScoreBonus() '"
+			'TODO NZ: play a sound 
+		Case 1:
+			PuPlayer.LabelSet pBackglass,"notetitle","Current Bonus",1,""
+			PuPlayer.LabelSet pBackglass,"notecopy",BonusPoints(CurrentPlayer),1,""
+			PlaySound "BonusCalculationSoundB"
+			DMD UDMDBlackBackground, "Current Bonus", BonusPoints(CurrentPlayer), 500, false
+			vpmtimer.addtimer 2000, "ScoreBonus() '"
+			'TODO NZ: play a sound 
+		Case 2: 
+			Dim TotalBonus
+			TotalBonus = BonusPoints(CurrentPlayer) * BonusMultiplier(CurrentPlayer)
+			Score(CurrentPlayer) = Score(CurrentPlayer) + TotalBonus
+			PuPlayer.LabelSet pBackglass,"notetitle","Total Bonus!!!",1,""
+			PuPlayer.LabelSet pBackglass,"notecopy",TotalBonus,1,""
+			PlaySound "BonusCalculationSoundA"
+			DMD UDMDBlackBackground, "Total Bonus", TotalBonus, 500, false
+			vpmtimer.addtimer 2000, "ScoreBonus() '"
+			'TODO NZ: play a sound 
+		Case 3:
+			PuPlayer.LabelSet pBackglass,"notetitle","Player Score",1,""
+			PuPlayer.LabelSet pBackglass,"notecopy",Score(CurrentPlayer),1,""
+			DMDScore
+			pUpdateScores
+			vpmtimer.addtimer 1500, "EndOfBall2() '"
+			
+			
+		End Select
+		ScoreBonusState = ScoreBonusState + 1
+		
+		
+	
+	End Sub
 	
 	Sub EndOfBall2()
 		Tilted = False
@@ -3207,8 +3152,8 @@ End Sub
 			If(ExtraBallsAwards(CurrentPlayer) = 0) Then
 				LightShootAgain.State = 0
 			End If
-			LightSeqFlasher.UpdateInterval = 150
-			LightSeqFlasher.Play SeqRandom, 10, , 2000
+			LS_Flasher.UpdateInterval = 150
+			LS_Flasher.Play SeqRandom, 10, , 2000
 
 			CreateNewBall false
 			ResetForNewPlayerBall
@@ -3252,8 +3197,9 @@ End Sub
 
 	Sub BallDrained
 		DOF 312, DOFPulse
-		PuPlayer.playlistplayex pMusic,"audioclear","clear.mp3",100, 1
-		PuPlayer.playlistplayex pBackglass,"videodrain","",100,1
+		PlaySound "DigitalDrain"
+		'PuPlayer.playlistplayex pMusic,"audioclear","clear.mp3",100, 1
+		'PuPlayer.playlistplayex pBackglass,"videodrain","",100,1
 	End Sub
 
 	Sub Drain_Hit()
@@ -3290,12 +3236,13 @@ End Sub
 			
 				If(BallsOnPlayfield = 0) Then
 					bMultiBallMode = False
+					bBallInPlay = False
 					ChangeGi "white"
 					KI_RightLockball.DestroyBall
 					KI_LeftLockball.DestroyBall
 
 					vpmtimer.addtimer 1000, "BallDrained '"
-					vpmtimer.addtimer 6000, "EndOfBall '"
+					vpmtimer.addtimer 3000, "EndOfBall '"
 					StopEndOfBallMode
 				End If
 			End If
@@ -3401,6 +3348,11 @@ End Sub
 		LightShootAgain.State = 2
 	End Sub
 
+	
+	Sub TR_BallLaunch_UnHit
+		PlaySoundAt "BallLaunch", TR_BallLaunch
+	
+	End Sub
 '********************************************************************************************************************************************
 '********************************************************************************************************************************************
 '********************************************************************************************************************************************
@@ -3584,12 +3536,14 @@ End Sub
 
 	Sub ResetNewBallVariables()
 		BonusPoints(CurrentPlayer) = 0
+		BonusMultiplier(CurrentPlayer) = 1
 		BumperHitCount = 0 
 		StreamOrbitCount = 0
 		bBonusHeld = False
 		bExtraBallWonThisBall = False
 		bBallSaverReady = True
 		bSkillShotReady = False	
+		bBallInPlay = False
 		bMultiBallMode = False
 		JackpotActive = False
 		Invincibility = False
@@ -3617,7 +3571,6 @@ End Sub
 		WriteLog("Function=TurnOffPlayfieldLights")
 		Dim a
 		For each a in alights
-			'WriteLog("Function=TurnOffPlayfieldLights Note='turning off a light'")
 			a.State = 0
 		Next
 	End Sub
@@ -3632,6 +3585,7 @@ End Sub
 	
 	Sub ResetNewBallLights() 'turn on or off the needed lights before a new ball is released
 		WriteLog("Function=ResetNewBallLights")
+		ResetAllLights
 		TurnOffPlayfieldLights()
 		'TurnOnPlayfieldLights()
 		'currentplayerbackglass
@@ -3745,7 +3699,7 @@ End Sub
 
 	Sub W_RightSS_Slingshot
 		WriteLog("Function=W_RightSS_Slingshot")
-		PlaySoundAt SoundFXDOF("RightSlingShot", 103, DOFPulse, DOFContactors), TR_RightInLane
+		PlaySoundAt SoundFXDOF("RightSlingShot", 111, DOFPulse, DOFContactors), TR_RightInLane
 		'PlaySound SoundFX("RightSlingShot",DOFContactors), 0,1, 0.05,0.05 '0,1, AudioPan(RightSlingShot), 0.05,0,0,1,AudioFade(RightSlingShot)
 		RB_RightSS2.Visible = 1
 
@@ -3765,7 +3719,7 @@ End Sub
 
 	Sub W_LeftSS_Slingshot
 		WriteLog("Function=W_LeftSS_Slingshot")
-		PlaySoundAt SoundFXDOF("LeftSlingShot", 103, DOFPulse, DOFContactors), TR_LeftInlane
+		PlaySoundAt SoundFXDOF("LeftSlingShot", 110, DOFPulse, DOFContactors), TR_LeftInlane
 		'PlaySound SoundFX("LeftSlingShot",DOFContactors), 0,1, -0.05,0.05 '0,1, AudioPan(LeftSlingShot), 0.05,0,0,1,AudioFade(LeftSlingShot)
 		RB_LeftSS2.Visible = 1
 		P_LeftSSKicker.TransZ = -20
@@ -3881,18 +3835,21 @@ End Sub
 				RightLockballArmed = true
 				BallsOnPlayField = BallsOnPlayField - 1
 				PuPlayer.LabelSet pBackglass,"lefttimer",BallsOnPlayfield,1,""
+				FlashForMs F_4, 250, 50, 0
+				FlashForMs F_4B, 250, 50, 0
 				
 				If RightLockballMode Then
 					WriteLog("Function KI_RightLockball Note='right lockball mode is enabled'")
+					PlaySoundAt "LockballLock", KI_RightLockball
 					AddScore(500)
 					L_MultiballLocked2.State = 1
 					CheckMultiBallReady
 					vpmtimer.addtimer 1000, "CreateNewBall true '"
 					ObtainPlayfieldObjective(LowerPlayfieldObjective)
 					'TODO NZ: dof/lights'
-					'TODO NZ: create a new ball '
 				Else
 					WriteLog("Function KI_RightLockball Note='right lockball mode is disabled'")
+					
 					AddScore(100)
 					'TODO NZ: dof/lights
 					vpmtimer.addtimer 500, "KickRightLockball '"
@@ -3903,15 +3860,20 @@ End Sub
 				LeftLockballArmed = true
 				BallsOnPlayField = BallsOnPlayField - 1
 				PuPlayer.LabelSet pBackglass,"lefttimer",BallsOnPlayfield,1,""
+				FlashForMs F_3, 250, 50, 0
+				FlashForMs F_3B, 250, 50, 0
+				
 				If LeftLockballMode Then
 					WriteLog("Function=KI_LeftLockball_Hit Note='lockball mode is enabled'")
+					PlaySoundAt "LockballLock", KI_LeftLockball
 					AddScore(500)
 					L_MultiballLocked1.State = 1
 					CheckMultiBallReady
 					vpmtimer.addtimer 1000, "CreateNewBall true '"
 					ObtainPlayfieldObjective(UpperPlayfieldObjective)
+					
 					'TODO NZ: dof/sound/etc
-					'TODO NZ: create a new ball '
+					
 
 				Else
 					WriteLog("Function=KI_LeftLockball_Hit Note='lockball mode is disabled'")
@@ -3983,9 +3945,8 @@ End Sub
 
 			'''''''''''''''INLANES''''''''''''''''
 			Case "TR_LeftInlane":
-				PlaySoundAt "fx_sensor", ActiveBall
 				If bMultiBallMode = False Then
-					PlaySound "lane"
+					PlaySoundAt "InLaneHit", TR_LeftInlane
 					DOF 144, DOFPulse
 					DOF 313, DOFPulse   'DOF MX - Left Outer Lane
 				End If
@@ -3999,9 +3960,8 @@ End Sub
 				'LastSwitchHit = "lane1"
 
 			Case "TR_RightInlane":
-				PlaySoundAt "fx_sensor", ActiveBall
 				If bMultiBallMode = False Then
-					PlaySound "lane"
+					PlaySoundAt "InLaneHit", TR_RightInlane
 					DOF 144, DOFPulse
 					DOF 313, DOFPulse   'DOF MX - Left Outer Lane
 				End If
@@ -4024,6 +3984,9 @@ End Sub
 			Case "GA_PowerupRamp":
 				If PowerupRampMode Then
 					StreamOrbitCount = StreamOrbitCount + 1
+					FlashForMs F_2, 250, 50, 0
+					FlashForMs F_2B, 250, 50, 0
+
 					AddScore(150)
 					AddBonus(50)
 					Dim i
@@ -4038,6 +4001,7 @@ End Sub
 						If NOT JackpotActive Then
 							WriteLog("Function=GA_PowerupRamp_Hit Note='Jackpot active from powerup ramp'")
 							SetJackpot true
+							
 							'TODO NZ: dof/sound/etc
 						End If
 						For i = 1 to 3
@@ -4048,19 +4012,31 @@ End Sub
 					WriteLog("Function=GA_PowerupRamp_Hit Note='powerup ramp not active'")
 				End If
 			Case "TR_PowerupRamp":
-				'nothing to do here yet.  maybe some dof/lights/pup'
+				PlaySound "StreamData"
+				'TODO NZ: lights
 			
 			
 			'''''''''''''''TARGETS''''''''''''''''
 			Case "TA_ObjectiveA":
+				FlashForMs F_9, 250, 50, 0
+				FlashForMs F_9B, 250, 50, 0
 				ObtainTargetObjective(TargetObjectiveA)
 			Case "TA_ObjectiveB":
+				FlashForMs F_3, 250, 50, 0
+				FlashForMs F_3B, 250, 50, 0
 				ObtainTargetObjective(TargetObjectiveB)
 			Case "TA_ObjectiveC":
+				FlashForMs F_3, 250, 50, 0
+				FlashForMs F_3B, 250, 50, 0
 				ObtainTargetObjective(TargetObjectiveC)
 			Case "TA_ObjectiveD":
+				FlashForMs F_6, 250, 50, 0
+				FlashForMs F_6B, 250, 50, 0
 				ObtainTargetObjective(TargetObjectiveD)
-			Case "TA_ObjectiveE":				
+			Case "TA_ObjectiveE":
+				FlashForMs F_8, 250, 50, 0
+				FlashForMs F_8B, 250, 50, 0
+				
 				ObtainTargetObjective(TargetObjectiveE)
 
 			'''''''''''''''OUTLANES''''''''''''''''
@@ -4071,32 +4047,42 @@ End Sub
 			Case "TR_RightOutlane":
 				If NOT Invincibility Then
 					If RightOutlaneSaverMode Then
+						PlaySoundAt "OutlaneSave", TR_RightOutlane
 						vpmtimer.AddTimer 1000, "SetRightOutlaneSaver false '"
 					Else
+						FlashForMs F_8, 250, 50, 0
+						FlashForMs F_8B, 250, 50, 0
 						AddScore(50)
 						AddBonus(50)
+						PlaySound "OutlaneDrain"
+						'TODO NZ: lights
 						'assign points going to drain
 					End If
-					
 				Else
-					'play a sound for invincible saved
+					PlaySound "OutlaneSave"
+
 				End If
 
 			Case "TR_LeftOutlane":
 				'TODO NZ: assign points and disable saver maybe
 				If NOT Invincibility Then
 					If LeftOutlaneSaverMode Then
-						'play some music "you got saved!"
+						PlaySoundAt "OutlaneSave", TR_LeftOutlane
+						
+						'TODO NZ: lights
 						vpmtimer.AddTimer 1000, "SetLeftOutlaneSaver false '"
 					Else
+						FlashForMs F_7, 250, 50, 0
+						FlashForMs F_7B, 250, 50, 0
 						AddScore(50)
 						AddBonus(50)
-						
-						'assign points, going to drain
+						PlaySoundAt "OutlaneDrain", TR_LeftOutlane
+						'TODO NZ: lights
 					End If
 					
 				Else 
-					'play a sound for invincible kickback
+					PlaySoundAt "OutlaneSave", TR_LeftOutlane
+					'TODO NZ: lights
 				End If
 				
 				
@@ -4107,10 +4093,9 @@ End Sub
 				SetBallSaverMode True, 10000
 
 			Case "TR_BallLaunch":
-				'TODO NZ: need to figure out how to auto plunger the ball out
 				SetPowerupRamp(false)
-				PlaySoundAt "fx_sensor", ActiveBall
 				bBallInPlungerLane = True
+				bBallInPlay = True
 				If bAutoPlunger Then
 					DOF 114, DOFPulse		
 					DOF 115, DOFPulse
@@ -4118,10 +4103,6 @@ End Sub
 					bAutoPlunger = False
 					
 				End If
-				
-				'Plunger.AutoPlunger = True
-				'Plunger.Pullback
-				'Plunger.Fire
 
 			End Select	
 		End If
@@ -4153,6 +4134,9 @@ End Sub
 		Else 
 			If DT_UpperLeft.IsDropped = 1 AND DT_UpperCenter.IsDropped = 1 AND DT_UpperRight.IsDropped = 1 Then
 				WriteLog("Function=CheckUpperDropTargets Note='All targets are dropped'")
+				FlashForMs F_9, 250, 50, 0
+				FlashForMs F_9B, 250, 50, 0
+				
 				SetLeftLockball(true)
 				ResetUpperDropTargets
 				AddScore(50)
@@ -4173,6 +4157,9 @@ End Sub
 		Else
 			If DT_LowerLeft.IsDropped = 1 AND DT_LowerCenter.IsDropped = 1 AND DT_LowerRight.IsDropped = 1 Then
 				WriteLog("Function=CheckLowerDropTargets Note='All targets are dropped'")
+				FlashForMs F_6, 250, 50, 0
+				FlashForMs F_6B, 250, 50, 0
+				
 				SetRightLockball(true)
 				ResetLowerDropTargets
 				AddScore(50)
@@ -4249,6 +4236,7 @@ End Sub
 		PuPlayer.LabelSet pBackglass,"lefttimer",BallsOnPlayfield,1,""
 		
 		KI_LeftLockball.Kick 180,20
+		PlaySoundAt "LockballLock", KI_LeftLockball
 		LeftLockballArmed = false
 	End Sub
 	
@@ -4258,6 +4246,7 @@ End Sub
 		SetRightLockballDT false
 		vpmtimer.addtimer 1000, "SetRightLockballDT true '"
 		KI_RightLockball.Kick 180,20
+		PlaySoundAt "LockballKick", KI_RightLockball
 		RightLockballArmed = false
 	End Sub
 	
@@ -4327,12 +4316,17 @@ End Sub
 			i.State = 0
 		Next
 	End Sub
-	
+
+
+
+
 	Sub SetJackpot(mode) 
 		JackpotActive = mode
 		If mode Then
 			L_JackpotReady.State = 2
 			L_JackpotReady.BlinkInterval = 500
+			FlashForMs  F_2, 1000, 100, 0
+			DMDScroll UDMDBlackBackground, "Data Jackpot", "Active!", 2000, true
 			'TODO NZ: play some stuff and flash some lights to indicate jackpot is active
 		Else
 			L_JackpotReady.State = 0
@@ -4366,6 +4360,7 @@ End Sub
 		
 		'TODO NZ: turn on light, play sound, dof
 		If mode Then
+			PlaySoundAt "RightOutlaneSaverActive", TR_RightOutlane
 			L_RightOutlane.State = 1
 			FL_RightOutlaneSaver.RotateToEnd
 			If Not Invincibility Then				
@@ -4373,6 +4368,7 @@ End Sub
 			End If			
 		Else
 			If Not Invincibility Then
+				PlaySoundAt "RightOutlaneSaverInactive", TR_RightOutlane
 				L_RightOutlane.State = 0
 				FL_RightOutlaneSaver.RotateToStart
 				'Play sound
@@ -4386,7 +4382,7 @@ End Sub
 		Case "S":
 			If L_SLight.State = 0 Then 
 				'L_SLight.State = 1 
-				SetLightColor L_SLight, red, 1
+				SetLightColor L_SLight, red, 1, -1
 				'L_SLight.State = 1
 			Else 
 				L_SLight.State = 0
@@ -4413,7 +4409,12 @@ End Sub
 			AddScore(250)
 			If BonusMultiplier(CurrentPlayer) < MaxMultiplier Then
 				BonusMultiplier(CurrentPlayer) = BonusMultiplier(CurrentPlayer) + 1
-				'TODO NZ: Show some info on the backglass or DMD
+				DMDScroll UDMDBlackBackground, "Data Multiplier", "x" & BonusMultiplier(CurrentPlayer), 2000, true
+				FlashForMs GI_5, 1000, 100, 2
+				FlashForMs GI_6, 1000, 100, 2
+				FlashForMs GI_7, 1000, 100, 2
+				PlaySound "MultiplierLevelUp"
+				'TODO NZ: DOF and Sounds
 			End If
 			
 		End If
@@ -4422,33 +4423,35 @@ End Sub
 
 	Sub SetPowerupRamp(mode)
 		WriteLog("Function=SetPowerupRamp mode=" & mode)
-		'TODO NZ: maybe play something?
 		PowerupRampMode = mode	
 	End Sub
 	
 '---------MODE HELPERS-----------	
-	Sub ActivateInvincibility(seconds)
-		'TODO NZ: lights/dof, 
-		'Set a timer to end it
+	Sub ActivateInvincibility(seconds)		
 		WriteLog("Function=ActivateInvincibility seconds=" & seconds)
 		'order is important.  the invincibility flag needs to be set first to keep the saver toggles from making sounds
+		'TODO NZ: lights
 		Invincibility = True
+		PlaySound "Invincibility"
+		StartInvincibleSeq
 		SetLeftOutlaneSaver(true)
 		SetRightOutlaneSaver(true)
 		L_InvincibleMode.State = 2
-		'vpmtimer..... DeactivateInvincibility
+		DMDScroll UDMDBlackBackground, "Unlimited", "Infrastructure!", 200, true
 		vpmTimer.AddTimer (seconds*1000), "DeactivateInvincibility() '"
 	End Sub
 	
 	Sub DeactivateInvincibility 
+		'TODO NZ: play sound
 		WriteLog("Function=DeactivateInvincibility")
 		Invincibility = False
+		StopInvincibleSeq
+		DMDScroll UDMDBlackBackground, "Back to", "normal...", 1500, true
 		'Order is important.  If invincibility is set to off, then the saver toggles will make sounds
 		L_InvincibleMode.State = 0
-
 		SetLeftOutlaneSaver(false)
 		SetRightOutlaneSaver(false)		
-		
+	
 		'TODO NZ: lights/dof, 
 	End Sub
 	
@@ -4478,8 +4481,15 @@ End Sub
 	End Sub
 '---------BUMPER HELPERS-----------	
 	Sub CheckBumperHitCount
+		If BumperHitCount = BumperBonusCount / 2 Then
+			DMDScroll UDMDBlackBackground, "Bumpers to go", BumperBonusCount / 2, 1500, true
+		End If
+		
 		If BumperHitCount = BumperBonusCount Then
 			'TODO NZ: Add PUP/Topper/Sounds/DOF
+			PlaySound "MultiplierLevelUp"
+			DMDScroll UDMDBlackBackground, "Data onboarding", "BONUS!", 1500, true
+
 			BumperHitCount = 0
 			AddBonus(50)
 		End If	
