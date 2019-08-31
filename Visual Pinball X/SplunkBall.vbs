@@ -3703,7 +3703,7 @@ End Sub
 		'PlaySound SoundFX("RightSlingShot",DOFContactors), 0,1, 0.05,0.05 '0,1, AudioPan(RightSlingShot), 0.05,0,0,1,AudioFade(RightSlingShot)
 		RB_RightSS2.Visible = 1
 
-		P_RightSSKicker.TransZ = -20
+		'P_RightSSKicker.TransZ = -30
 		RStep = 0
 		W_RightSS.TimerEnabled = 1
 
@@ -3711,8 +3711,8 @@ End Sub
 
 	Sub W_RightSS_Timer
 		Select Case RStep
-			Case 3:RB_RightSS2.Visible = 0:RB_RightSS3.Visible = 1:P_RightSSKicker.TransZ = -10
-			Case 4:RB_RightSS3.Visible = 0:P_RightSSKicker.TransZ = 0:W_RightSS.TimerEnabled = 0
+			Case 3:RB_RightSS2.Visible = 0:RB_RightSS3.Visible = 1':P_RightSSKicker.TransZ = -10
+			Case 4:RB_RightSS3.Visible = 0:W_RightSS.TimerEnabled = 0'P_RightSSKicker.TransZ = 0:
 		End Select
 		RStep = RStep + 1
 	End Sub
@@ -3722,7 +3722,7 @@ End Sub
 		PlaySoundAt SoundFXDOF("LeftSlingShot", 110, DOFPulse, DOFContactors), TR_LeftInlane
 		'PlaySound SoundFX("LeftSlingShot",DOFContactors), 0,1, -0.05,0.05 '0,1, AudioPan(LeftSlingShot), 0.05,0,0,1,AudioFade(LeftSlingShot)
 		RB_LeftSS2.Visible = 1
-		P_LeftSSKicker.TransZ = -20
+		'P_LeftSSKicker.TransZ = -30
 		LStep = 0
 		W_LeftSS.TimerEnabled = 1
 
@@ -3730,8 +3730,8 @@ End Sub
 
 	Sub W_LeftSS_Timer
 		Select Case LStep
-			Case 3:RB_LeftSS2.Visible = 0:RB_LeftSS3.Visible = 1:P_LeftSSKicker.TransZ = -10
-			Case 4:RB_LeftSS3.Visible = 0:P_LeftSSKicker.TransZ = 0:W_LeftSS.TimerEnabled = 0
+			Case 3:RB_LeftSS2.Visible = 0:RB_LeftSS3.Visible = 1:'P_LeftSSKicker.TransZ = -10
+			Case 4:RB_LeftSS3.Visible = 0:W_LeftSS.TimerEnabled = 0'P_LeftSSKicker.TransZ = 0:
 		End Select
 		LStep = LStep + 1
 	End Sub
