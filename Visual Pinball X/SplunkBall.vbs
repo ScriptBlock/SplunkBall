@@ -91,7 +91,7 @@
 ' X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  
 ' 	
 
-	'Constructions
+	'Constants
 	Const BallSize = 50
 	Const MaxPlayers = 4
 	' TODO NZ: Implement Ballsaver time 
@@ -115,7 +115,11 @@
 
 	Const UDMDScoreBackground = "Green-Splunk-Background.png"
 	Const UDMDBlackBackground = "Solid-Black.jpg"
-	
+
+	Const UltraDMD_VideoMode_Stretch = 0		
+    Const UltraDMD_VideoMode_Top = 1
+    Const UltraDMD_VideoMode_Middle = 2
+    Const UltraDMD_VideoMode_Bottom = 3	
 	
 	'Const SplunkPurple = RGB(235, 0, 140)
 	'Const SplunkOrange = RGB(249, 157, 28)
@@ -182,6 +186,8 @@
 	Dim RightLockballArmed
 	Dim LeftLockballArmed
 	
+
+	
 	Dim LightIntensityQueue(2)
 	
 	Dim LoggingQueue
@@ -204,7 +210,7 @@
 ' X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  
 
 	TurnOffRules = 0 ' change to 1 to take off the backglass helper rules text during a game
-	TurnOnUltraDMD = 0 ' change to 1 to turn on ultradmd
+	TurnOnUltraDMD = 1 ' change to 1 to turn on ultradmd
 	TopperVideo = 0 'set to 1 to turn on the topper
 	'BallRollerOn = 0 ' set to 0 to turn off the ball roller if you use the "c" key in your cabinet
 	TotalGamesPlayed = -1
@@ -245,9 +251,6 @@
 		If Err Then MsgBox "Can't open core.vbs"
 		On Error Goto 0
 	End Sub
-
-	Dim EnableBallControl
-	EnableBallControl = false 'Change to true to enable manual ball control (or press C in-game) via the arrow keys and B (boost movement) keys
 
 
 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -552,48 +555,53 @@ End Sub
 '/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/
 '\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\
 ' X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  
-
-	'TODO NZ: Make this whole thing into a big switch/case
+	Dim ManualBallControlActive
+	ManualBallControlActive = 0
+	Dim temp: temp = 1
 	Sub Table1_KeyDown(ByVal KeyCode)
 		WriteLog("Action=KeyDown Key=" & KeyCode)
 
 		'This is for manual ball control
 '		If BallRollerOn = 1 then
-'			If KeyCode = 46 then ' C Key
-'				 If ManualBallControlActive = 1 Then
-'						WriteLog("Manual ball control deactivated")
-'					  ManualBallControlActive = 0
-'				 Else
-'						WriteLog("Manual ball control activated")
-'					  ManualBallControlActive = 1
-'				 End If
-'			End If
+			If KeyCode = 46 then ' C Key
+				 If ManualBallControlActive = 1 Then
+						WriteLog("Manual ball control deactivated")
+					  ManualBallControlActive = 0
+					  contballinplay = false
+				 Else
+					Set ControlBall = ActiveBall
+						contballinplay = true				 
+						WriteLog("Manual ball control activated")
+					  ManualBallControlActive = 1
+				 End If
+			End If
 '		End If
 '		
 '		'More ball control shenanigans
-'		If KeyCode = 48 Then 'B Key
-'			 If bcboost = 1 Then
-'				  bcboost = bcboostmulti
-'			 Else
-'				  bcboost = 1
-'			 End If
-'		End If
+		If KeyCode = 48 Then 'B Key
+			 If bcboost = 1 Then
+				  bcboost = bcboostmulti
+			 Else
+				  bcboost = 1
+			 End If
+		End If
+		
+		If KeyCode = 47 Then 
+			If temp = 1 Then
+				FlashEffect 3
+				temp = temp + 1
+			Else
+				FlashEffect 2
+				temp = 1
+			End If
+		End if
 		
 		'Ball control 
-		'If KeyCode = 203 Then bcleft = 1 ' Left Arrow
-		'If KeyCode = 200 Then bcup = 1 ' Up Arrow
-		'If KeyCode = 208 Then bcdown = 1 ' Down Arrow
-		'If KeyCode = 205 Then bcright = 1 ' Right Arrow
+		If KeyCode = 203 Then bcleft = 1 ' Left Arrow
+		If KeyCode = 200 Then bcup = 1 ' Up Arrow
+		If KeyCode = 208 Then bcdown = 1 ' Down Arrow
+		If KeyCode = 205 Then bcright = 1 ' Right Arrow
 
-		If KeyCode = 203 Then
-			StartInvincibleSeq
-		End If
-
-		If KeyCode = 205 Then
-			StopInvincibleSeq
-		End If
-
-		
 
 		If KeyCode = PlungerKey Then
 			PlaySoundAt "fx_plungerpull", Plunger
@@ -697,10 +705,10 @@ End Sub
 
 	Sub Table1_KeyUp(ByVal KeyCode)
 		'Manual Ball Control
-		'If KeyCode = 203 then bcleft = 0 ' Left Arrow
-		'If KeyCode = 200 then bcup = 0 ' Up Arrow
-		'If KeyCode = 208 then bcdown = 0 ' Down Arrow
-		'If KeyCode = 205 then bcright = 0 ' Right Arrow
+		If KeyCode = 203 then bcleft = 0 ' Left Arrow
+		If KeyCode = 200 then bcup = 0 ' Up Arrow
+		If KeyCode = 208 then bcdown = 0 ' Down Arrow
+		If KeyCode = 205 then bcright = 0 ' Right Arrow
 
 		If KeyCode = PlungerKey Then
 			PlaySoundAt "fx_plunger", Plunger
@@ -784,6 +792,61 @@ End Sub
 '			 End If
 '		 End If
 '	End Sub
+
+
+'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+' X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  
+'/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/
+'\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\
+' X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  
+'/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/
+'  MANUAL BALLCONTROL
+'\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\
+' X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  
+'/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/
+'\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\ /\
+' X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  
+	' 
+
+
+	Sub StartControl_Hit()
+		 Set ControlBall = ActiveBall
+		 contballinplay = true
+	End Sub
+
+	Sub StopControl_Hit()
+		 contballinplay = false
+	End Sub
+
+	Dim bcup, bcdown, bcleft, bcright, contball, contballinplay, ControlBall, bcboost
+	Dim bcvel, bcyveloffset, bcboostmulti
+
+	bcboost = 1 'Do Not Change - default setting
+	bcvel = 4 'Controls the speed of the ball movement
+	bcyveloffset = -0.01 'Offsets the force of gravity to keep the ball from drifting vertically on the table, should be negative
+	bcboostmulti = 3 'Boost multiplier to ball veloctiy (toggled with the B key)
+
+	Sub BallControl_Timer()
+		
+		 If ContBallInPlay then
+			'WriteLog("bct")
+			  If bcright = 1 Then
+				   ControlBall.velx = bcvel*bcboost
+			  ElseIf bcleft = 1 Then
+				   ControlBall.velx = - bcvel*bcboost
+			  Else
+				   ControlBall.velx=0
+			  End If
+
+			 If bcup = 1 Then
+				  ControlBall.vely = -bcvel*bcboost
+			 ElseIf bcdown = 1 Then
+				  ControlBall.vely = bcvel*bcboost
+			 Else
+				  ControlBall.vely= bcyveloffset
+			 End If
+		 End If
+	End Sub
 
 
 
@@ -1231,7 +1294,13 @@ End Sub
 		End If
 	End Sub
 
-
+	Sub DMDZoomIn(background, toptext, bottomtext, duration, showScore)
+		If TurnOnUltraDMD = 0 Then exit sub
+		UltraDMD.DisplayScene00 background, toptext, 15, bottomtext, 15, 2, duration, 1
+		If showScore Then
+			UltraDMDTimer.Enabled = 1 'to show the score after the animation/message
+		End If
+	End Sub
 
 	Sub DMDScore
 		If TurnOnUltraDMD = 0 then exit sub
@@ -1274,6 +1343,7 @@ End Sub
 		UltraDMD.ModifyScene00Ex id, toptext, bottomtext, duration
 	End Sub
 
+	
 	Sub UltraDMDTimer_Timer 'used for the attrackmode and the instant info.
 		If TurnOnUltraDMD = 0 then exit sub
 		If bInstantInfo Then
@@ -1307,7 +1377,8 @@ End Sub
 			MsgBox "Incompatible Version of UltraDMD found. Please update to version 1.1 or newer."
 			Exit Sub
 		End If
-
+		UltraDMD.SetVideoStretchMode UltraDMD_VideoMode_Middle
+		
 		Dim fso:Set fso = CreateObject("Scripting.FileSystemObject")
 		Dim curDir:curDir = fso.GetAbsolutePathName(".")
 
@@ -1317,10 +1388,10 @@ End Sub
 		If Not fso.FolderExists(DirName) Then _
 				Msgbox "UltraDMD userfiles directory '" & DirName & "' does not exist." & CHR(13) & "No graphic images will be displayed on the DMD"
 		UltraDMD.SetProjectFolder DirName
-
+		
 		' wait for the animation to end
-		While UltraDMD.IsRendering = True
-		WEnd
+		'While UltraDMD.IsRendering = True
+		'WEnd
 		WriteLog("Function=DMD_Init Note='UltraDMD Render Complete'")
 
 	End Sub
@@ -2008,7 +2079,7 @@ End Sub
 		StopRainbow alights
 		StopAltRainbow GI
 		ResetAllLights
-		TurnOffPlayfieldLights
+		'TurnOffPlayfieldLights
 		IntroMover.enabled = false
 		
 	'StopSong
@@ -2182,53 +2253,54 @@ End Sub
 	End Sub
 	
 	Sub ResetAllPlayfieldLights
-		SetLightColor L_SLight, red, 1, 6 
-		SetLightColor L_PLight, red, 1, 6
-		SetLightColor L_LLight, red, 1, 6 
+		WriteLog("Function=ResetAllPlayfieldLights")
+		SetLightColor L_SLight, red, 0, 6 
+		SetLightColor L_PLight, red, 0, 6
+		SetLightColor L_LLight, red, 0, 6 
 		
-		SetLightColor L_StreamOrbital1, darkgreen, 1, 30
-		SetLightColor L_StreamOrbital2, darkgreen, 1, 30
-		SetLightColor L_StreamOrbital3, darkgreen, 1, 30
+		SetLightColor L_StreamOrbital1, darkgreen, 2, 30
+		SetLightColor L_StreamOrbital2, darkgreen, 0, 30
+		SetLightColor L_StreamOrbital3, darkgreen, 0, 30
 		
 		SetLightColor L_BumperLeft, green, 1, 10
 		SetLightColor L_BumperRight, green, 1, 10
 		SetLightColor L_BumperLower, green, 1, 10
 		
-		SetLightColor L_DT_UpperLeft, red, 1, 15
-		SetLightColor L_DT_UpperRight, red, 1, 15
-		SetLightColor L_DT_UpperCenter, red, 1, 15
+		SetLightColor L_DT_UpperLeft, red, 2, 15
+		SetLightColor L_DT_UpperRight, red, 2, 15
+		SetLightColor L_DT_UpperCenter, red, 2, 15
 		
-		SetLightColor L_DT_LowerLeft, blue, 1, 20
-		SetLightColor L_DT_LowerCenter, blue, 1, 20
-		SetLightColor L_DT_LowerRight, blue, 1, 20
+		SetLightColor L_DT_LowerLeft, blue, 2, 20
+		SetLightColor L_DT_LowerCenter, blue, 2, 20
+		SetLightColor L_DT_LowerRight, blue, 2, 20
 		
-		SetLightColor L_ObjectiveA, yellow, 1, 15
-		SetLightColor L_ObjectiveB, yellow, 1, 15
-		SetLightColor L_ObjectiveC, yellow, 1, 15
-		SetLightColor L_ObjectiveD, yellow, 1, 15
-		SetLightColor L_ObjectiveE, yellow, 1, 15
+		SetLightColor L_ObjectiveA, yellow, 2, 15
+		SetLightColor L_ObjectiveB, yellow, 2, 15
+		SetLightColor L_ObjectiveC, yellow, 2, 15
+		SetLightColor L_ObjectiveD, yellow, 2, 15
+		SetLightColor L_ObjectiveE, yellow, 2, 15
 		
-		SetLightColor L_LowerObjectiveAchieved, green, 1, 15
-		SetLightColor L_UpperObjectiveAchieved, green, 1, 15
-		SetLightColor L_StreamOrbitAchieved, green, 1, 15
-		SetLightColor L_AllTargetsAchieved, green, 1, 15
+		SetLightColor L_LowerObjectiveAchieved, green, 0, 15
+		SetLightColor L_UpperObjectiveAchieved, green, 0, 15
+		SetLightColor L_StreamOrbitAchieved, green, 0, 15
+		SetLightColor L_AllTargetsAchieved, green, 0, 15
 		
-		SetLightColor L_InvincibleMode, yellow, 1, 15
+		SetLightColor L_InvincibleMode, yellow, 0, 15
 		
-		SetLightColor L_LeftOutlane, blue, 2, 30
-		SetLightColor L_RightOutlane, blue, 2, 30
+		SetLightColor L_LeftOutlane, blue, 0, 30
+		SetLightColor L_RightOutlane, blue, 0, 30
 		
-		SetLightColor L_LowerLockballGate, purple, 1, 15
-		SetLightColor L_RightLockballReady, purple, 2, 15
+		SetLightColor L_LowerLockballGate, purple, 0, 15
+		SetLightColor L_RightLockballReady, purple, 0, 15
 		
-		SetLightColor L_LeftLockballReady, purple, 2, 15
+		SetLightColor L_LeftLockballReady, purple, 0, 15
 		
-		SetLightColor L_MultiballLocked1, amber, 1, 20
-		SetLightColor L_MultiballLocked2, amber, 1, 20
+		SetLightColor L_MultiballLocked1, amber, 0, 20
+		SetLightColor L_MultiballLocked2, amber, 0, 20
 		
-		SetLightColor L_MultiballReady, darkblue, 2, 10
+		SetLightColor L_MultiballReady, darkblue, 0, 10
 		
-		SetLightColor L_JackpotReady, blue, 2, 20
+		SetLightColor L_JackpotReady, blue, 0, 20
 	End Sub
 	
 	Sub ResetAllFlashers
@@ -2790,7 +2862,9 @@ End Sub
 				'LightSeqbumper.UpdateInterval = 4
 				'LightSeqbumper.Play SeqBlinking, , 5, 10
 				LS_Bumpers.UpdateInterval = 2
-				LS_Bumpers.Play SeqBlinking, , 5, 10
+				LS_Bumpers.Play SeqBlinking, 10, 1
+				'TODO NZ: add DMD lights here for bumper hits
+				
 			Case 6 'random
 				'LightSeqRSling.UpdateInterval = 4
 				'LightSeqRSling.Play SeqBlinking, , 5, 6
@@ -2820,11 +2894,11 @@ End Sub
 				LS_Flasher.UpdateInterval = 10
 				LS_Flasher.Play SeqBlinking, , 5, 40
 			Case 2 'random
-				LS_Flasher.UpdateInterval = 10
-				LS_Flasher.Play SeqRandom, 5, , 1000
-			Case 3 'upon
-				LS_Flasher.UpdateInterval = 4
-				LS_Flasher.Play SeqUpOn, 10, 1
+				LS_Flasher.UpdateInterval = 100
+				LS_Flasher.Play SeqRandom, 10, , 1000
+			Case 3 'longer random
+				LS_Flasher.UpdateInterval = 50
+				LS_Flasher.Play SeqRandom, 10, , 3000
 			Case 4 ' left-right-left
 				LS_Flasher.UpdateInterval = 5
 				LS_Flasher.Play SeqLeftOn, 10, 1
@@ -3586,7 +3660,7 @@ End Sub
 	Sub ResetNewBallLights() 'turn on or off the needed lights before a new ball is released
 		WriteLog("Function=ResetNewBallLights")
 		ResetAllLights
-		TurnOffPlayfieldLights()
+		'TurnOffPlayfieldLights()
 		'TurnOnPlayfieldLights()
 		'currentplayerbackglass
 	End Sub
@@ -3812,9 +3886,15 @@ End Sub
 			Case "GA_SkillShot":
 				If JackpotActive Then
 					'TODO NZ: award jackpot, flash lights, etc
+					DMDZoomIn UDMDBlackBackground, "JACKPOT!","",1000, true
+					
+					'randomly blink the table flashers
+					FlashEffect 2
+					
 					AddScore(1000)
 					SetJackpot false
 				Else
+					PlaySound "NonJackpotSkillshot"
 					AddScore(50)
 				End If					
 				
@@ -3822,6 +3902,7 @@ End Sub
 			'''''''''''''''LOCKBALLS''''''''''''''''
 			Case "DT_RightLockball":
 				AddScore(100)
+				'TODO NZ: play sound, dof
 				If NOT bMultiBallMode Then
 					WriteLog("Function=DT_RightLockball Note='Its not multiball'")
 					If RightLockballMode AND RightLockballArmed Then
@@ -3843,13 +3924,14 @@ End Sub
 					PlaySoundAt "LockballLock", KI_RightLockball
 					AddScore(500)
 					L_MultiballLocked2.State = 1
-					CheckMultiBallReady
+					DMD UDMDBlackBackground, "ITSI Lockball", "Locked!", 1000, true
+					vpmtimer.addtimer 1000, "CheckMultiBallReady '"
 					vpmtimer.addtimer 1000, "CreateNewBall true '"
 					ObtainPlayfieldObjective(LowerPlayfieldObjective)
 					'TODO NZ: dof/lights'
 				Else
 					WriteLog("Function KI_RightLockball Note='right lockball mode is disabled'")
-					
+					DMD "LowerDropTargetAnimationFinal.gif", "Hit the targets!", "", 1000, true
 					AddScore(100)
 					'TODO NZ: dof/lights
 					vpmtimer.addtimer 500, "KickRightLockball '"
@@ -3868,7 +3950,8 @@ End Sub
 					PlaySoundAt "LockballLock", KI_LeftLockball
 					AddScore(500)
 					L_MultiballLocked1.State = 1
-					CheckMultiBallReady
+					DMD UDMDBlackBackground, "ES Lockball", "Locked!", 1000, true
+					vpmtimer.addtimer 1000, "CheckMultiBallReady '"
 					vpmtimer.addtimer 1000, "CreateNewBall true '"
 					ObtainPlayfieldObjective(UpperPlayfieldObjective)
 					
@@ -3879,6 +3962,7 @@ End Sub
 					WriteLog("Function=KI_LeftLockball_Hit Note='lockball mode is disabled'")
 					AddScore(100)
 					vpmtimer.addtimer 500, "KickLeftLockball '"
+					DMD "LowerDropTargetAnimationFinal.gif", "Hit the targets!", "", 1000, true
 
 					'TODO NZ dof
 				End If
@@ -3886,25 +3970,7 @@ End Sub
 			Case "KI_Multiball":
 				If LeftLockballArmed AND RightLockballArmed Then
 					'TODO NZ: maybe move this into a subroutine
-					bMultiBallMode = true
-					SetLeftLockball false
-					SetRightLockball false
-					L_MultiballLocked2.State = 0
-					L_MultiballLocked1.State = 0
-					L_MultiballReady.State = 0
-					
-					WriteLog("Multiball activated!")
-					WriteLog("Balls on playfield at start of multiball = " & BallsOnPlayField)
-					'TODO NZ: dof/lights/go crazy
-					KI_Multiball.DestroyBall
-					BallsOnPlayField = BallsOnPlayField - 1
-					PuPlayer.LabelSet pBackglass,"lefttimer",BallsOnPlayfield,1,""
-					WriteLog("Balls on playfield after first destroy = " & BallsOnPlayField)
-					
-					AddScore(1000)
-					AddMultiball 2
-					vpmtimer.addtimer 5000, "KickLeftLockball() '"
-					vpmtimer.addtimer 6000, "KickRightLockball() '"
+					StartMultiballRoutine
 				Else
 					AddScore(100)
 					KI_Multiball.Kick 270, 40
@@ -4007,6 +4073,8 @@ End Sub
 						For i = 1 to 3
 							OrbitalLights(i-1).State = 0
 						Next
+					Else
+						DMD "DMDStreamScroller.gif", "", "", 2000, true
 					End If
 				Else 
 					WriteLog("Function=GA_PowerupRamp_Hit Note='powerup ramp not active'")
@@ -4017,6 +4085,7 @@ End Sub
 			
 			
 			'''''''''''''''TARGETS''''''''''''''''
+			'TODO NZ: DMD effects for the targets
 			Case "TA_ObjectiveA":
 				FlashForMs F_9, 250, 50, 0
 				FlashForMs F_9B, 250, 50, 0
@@ -4055,12 +4124,12 @@ End Sub
 						AddScore(50)
 						AddBonus(50)
 						PlaySound "OutlaneDrain"
+						DMD UDMDBlackBackground, "15000 Step Regex", "SAD FACE", 500, false
 						'TODO NZ: lights
 						'assign points going to drain
 					End If
 				Else
 					PlaySound "OutlaneSave"
-
 				End If
 
 			Case "TR_LeftOutlane":
@@ -4077,6 +4146,7 @@ End Sub
 						AddScore(50)
 						AddBonus(50)
 						PlaySoundAt "OutlaneDrain", TR_LeftOutlane
+						DMD UDMDBlackBackground, "15000 Step Regex", "SAD FACE", 500, false
 						'TODO NZ: lights
 					End If
 					
@@ -4136,6 +4206,8 @@ End Sub
 				WriteLog("Function=CheckUpperDropTargets Note='All targets are dropped'")
 				FlashForMs F_9, 250, 50, 0
 				FlashForMs F_9B, 250, 50, 0
+
+				DMDZoomIn "DMDPonyAnimation.gif", "        ES Lockball", "      READY!", 1500, 1
 				
 				SetLeftLockball(true)
 				ResetUpperDropTargets
@@ -4159,12 +4231,14 @@ End Sub
 				WriteLog("Function=CheckLowerDropTargets Note='All targets are dropped'")
 				FlashForMs F_6, 250, 50, 0
 				FlashForMs F_6B, 250, 50, 0
+
+				DMDZoomIn "DMDPonyAnimation.gif", "        ITSI Lockball", "      READY!", 1500, 1
 				
 				SetRightLockball(true)
 				ResetLowerDropTargets
 				AddScore(50)
 				AddBonus(100)
-				'TODO NZ: dof to tell folks left kicker is lockable
+				'TODO NZ: dof to tell folks left kicker is lockable, dmd & 
 			Else
 				AddScore(10)
 			End If
@@ -4267,15 +4341,21 @@ End Sub
 		Next
 		
 		If isTableObjectiveAchieved Then
-			'TODO NZ: award lots of points, pup, dof, etc
+			'TODO NZ: award lots of points, pup, dof, dmd
+			DMDScroll UDMDBlackBackground, "You are a", "SPLUNK NINJA", 1000, false
+			DMDZoomIn 
 			AddScore(1000)
-			For i = 0 to 3
-				PlayfieldObjectives(i) = 0
-				PlayfieldObjectiveLights(i).State = 0
-			Next
+			vpmtimer.addtimer 2000, "ResetPlayfieldObjectiveLights() '"
 		End If
 			
 	
+	End Sub
+	
+	Sub ResetPlayfieldObjectiveLights
+		For i = 0 to 3
+			PlayfieldObjectives(i) = 0
+			PlayfieldObjectiveLights(i).State = 0
+		Next
 	End Sub
 
 	Sub ObtainTargetObjective(objectiveNumber)
@@ -4293,16 +4373,30 @@ End Sub
 				isTargetObjectiveAchieved = false
 			End If
 		Next
-
+		
 		If isTargetObjectiveAchieved Then
 			WriteLog("Function=ObtainTargetObjective Note='Target objectives complete, setting jackpot to true'")
+			DMDZoomIn UDMDBlackBackground, "Targets", "Achieved!", 1000, true
 			SetJackpot true
 			ObtainPlayfieldObjective(TargetsPlayfieldObjective)
 			AddBonus(50)
 			ResetTargetObjectives
 				
-			'TODO NZ: dof/lights/etc
+			'TODO NZ: dof/lights/dmd
 		Else
+			Select Case objectiveNumber
+			Case 0:
+				DMD UDMDBlackBackground, "Threat", "Identified", 1500, true
+			Case 1:
+				DMD UDMDBlackBackground, "Anomaly", "Detected", 1500, true
+			Case 2:
+				DMD UDMDBlackBackground, "IoC", "Found", 1500, true
+			Case 3:
+				DMD UDMDBlackBackground, "Collecting", "EVENTS", 1500, true
+			Case 4:
+				DMD UDMDBlackBackground, "Measuring", "METRICS", 1500, true
+			End Select
+		
 			WriteLog("Function=ObtainTargetObjective Note='Target objectives NOT complete'")
 		End If
 	End Sub
@@ -4317,8 +4411,39 @@ End Sub
 		Next
 	End Sub
 
+	Sub StartMultiballRoutine
+		WriteLog("Multiball activated!")
+		WriteLog("Balls on playfield at start of multiball = " & BallsOnPlayField)
+		AddScore(1000)
 
+		'TODO NZ: play sound here
+		DMD "DataDropIn.gif", "", "", 1500, false
+		DMDZoomIn UDMDBlackBackground, "Unlimited Data", "Multiball!!", 2000, false
+		
+		FlashEffect 2
+		
+		vpmtimer.addtimer 2000, "MultiballRoutinePart2() '"
+		
+	End Sub
+	
+	Sub MultiballRoutinePart2
+		bMultiBallMode = true
+		SetLeftLockball false
+		SetRightLockball false
+		L_MultiballLocked2.State = 0
+		L_MultiballLocked1.State = 0
+		L_MultiballReady.State = 0
+		
+		
+		KI_Multiball.DestroyBall
+		BallsOnPlayField = BallsOnPlayField - 1
+		PuPlayer.LabelSet pBackglass,"lefttimer",BallsOnPlayfield,1,""
 
+		
+		AddMultiball 3
+		vpmtimer.addtimer 5000, "KickLeftLockball() '"
+		vpmtimer.addtimer 6000, "KickRightLockball() '"
+	End Sub
 
 	Sub SetJackpot(mode) 
 		JackpotActive = mode
@@ -4459,6 +4584,7 @@ End Sub
 		If LeftLockballArmed AND RightLockballArmed Then
 			L_MultiballReady.State = 2
 		Else
+			
 			L_MultiballReady.State = 0
 		End If
 	End Sub
