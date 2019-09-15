@@ -2141,7 +2141,7 @@ End Sub
 	' Final State values are:   0=Off, 1=On, 2=Return to previous State
 	'********************************************************************************************
 
-	'TODO NZ: this is not implemented
+
 	Sub FlashForMs(MyLight, TotalPeriod, BlinkPeriod, FinalState) 'thanks gtxjoe for the first version
 		If TypeName(MyLight) = "Light" Then
 
@@ -2151,7 +2151,6 @@ End Sub
 			MyLight.BlinkInterval = BlinkPeriod
 			MyLight.Duration 2, TotalPeriod, FinalState
 		ElseIf TypeName(MyLight) = "Flasher" Then
-
 			Dim steps
 
 			' Store all blink information
@@ -2863,8 +2862,6 @@ End Sub
 				'LightSeqbumper.Play SeqBlinking, , 5, 10
 				LS_Bumpers.UpdateInterval = 2
 				LS_Bumpers.Play SeqBlinking, 10, 1
-				'TODO NZ: add DMD lights here for bumper hits
-				
 			Case 6 'random
 				'LightSeqRSling.UpdateInterval = 4
 				'LightSeqRSling.Play SeqBlinking, , 5, 6
@@ -2885,7 +2882,6 @@ End Sub
 	Dim FEStep, FEffect
 	FEStep = 0
 	FEffect = 0
-	'TODO NZ: reimplment this stuff maybe
 	Sub FlashEffect(n)
 		Select case n
 			Case 0 ' all off
@@ -2979,7 +2975,6 @@ End Sub
 		If(Tilted = False) Then
 			BonusPoints(CurrentPlayer) = BonusPoints(CurrentPlayer) + points
 		End If
-		'TODO NZ: This stuff		
 	End Sub
 
 	'TODO NZ: reimplment this
@@ -3090,10 +3085,7 @@ End Sub
 		Else
 			WriteLog("Function=ResetForNewPlayerBall Note='Single Player Game'")
 			pNote "BALL " & Balls,"LAUNCH BALL"
-			'TODO NZ: fix these sounds
 			PlaySoundAt "NewBallInPlungerLane", TR_BallLaunch
-			'PlaySound "flute"
-			'PuPlayer.playlistplayex pCallouts,"audiocallouts","oneplayergame.wav",70,1
 		End If
 		AddScore 0
 		
@@ -3117,11 +3109,9 @@ End Sub
 		PuPlayer.LabelSet pBackglass,"lefttimer",BallsOnPlayfield,1,""		
 		If isFromLockBall Then
 			KI_MultiballLaunch.CreateSizedball BallSize / 2
-			'TODO NZ: fix this to play sound at bumpers
 			PlaySoundAt SoundFXDOF("fx_Ballrel", 114, DOFPulse, DOFContactors), KI_MultiballLaunch
 			KI_MultiballLaunch.Kick 180, 30
 		Else 
-			'TODO NZ: different situation if from lockball - create at the multiball kicker'
 			KI_Plunger.CreateSizedball BallSize / 2
 			PlaySoundAt SoundFXDOF("fx_Ballrel", 114, DOFPulse, DOFContactors), KI_Plunger
 			KI_Plunger.Kick 90, 4
@@ -3182,14 +3172,12 @@ End Sub
 			DMD UDMDBlackBackground, "Bonus Multiplier", BonusMultiplier(CurrentPlayer), 500, false
 			PlaySound "BonusCalculationSoundA"
 			vpmtimer.addtimer 2000, "ScoreBonus() '"
-			'TODO NZ: play a sound 
 		Case 1:
 			PuPlayer.LabelSet pBackglass,"notetitle","Current Bonus",1,""
 			PuPlayer.LabelSet pBackglass,"notecopy",BonusPoints(CurrentPlayer),1,""
 			PlaySound "BonusCalculationSoundB"
 			DMD UDMDBlackBackground, "Current Bonus", BonusPoints(CurrentPlayer), 500, false
 			vpmtimer.addtimer 2000, "ScoreBonus() '"
-			'TODO NZ: play a sound 
 		Case 2: 
 			Dim TotalBonus
 			TotalBonus = BonusPoints(CurrentPlayer) * BonusMultiplier(CurrentPlayer)
@@ -3199,7 +3187,6 @@ End Sub
 			PlaySound "BonusCalculationSoundA"
 			DMD UDMDBlackBackground, "Total Bonus", TotalBonus, 500, false
 			vpmtimer.addtimer 2000, "ScoreBonus() '"
-			'TODO NZ: play a sound 
 		Case 3:
 			PuPlayer.LabelSet pBackglass,"notetitle","Player Score",1,""
 			PuPlayer.LabelSet pBackglass,"notecopy",Score(CurrentPlayer),1,""
@@ -3424,7 +3411,8 @@ End Sub
 
 	
 	Sub TR_BallLaunch_UnHit
-		PlaySoundAt "BallLaunch", TR_BallLaunch
+		PlaySoundAt SoundFXDOF("BallLaunch", 132, DOFPulse, DOFContactors), TR_BallLaunch
+		'PlaySoundAt "BallLaunch", TR_BallLaunch
 	
 	End Sub
 '********************************************************************************************************************************************
@@ -3862,34 +3850,38 @@ End Sub
 			'''''''''''''''UPPER DROP TARGETS''''''''''''''''
 			Case "DT_UpperLeft":
 				L_DT_UpperLeft.State = 1
+				DOF 230
 				vpmtimer.AddTimer 250, "CheckUpperDropTargets()'"
 			Case "DT_UpperCenter":
 				L_DT_UpperCenter.State = 1
+				DOF 230
 				vpmtimer.AddTimer 250, "CheckUpperDropTargets()'"
 			Case "DT_UpperRight":
 				L_DT_UpperRight.State = 1
+				DOF 230
 				vpmtimer.AddTimer 250, "CheckUpperDropTargets()'"
 				
 				
 			'''''''''''''''LOWER DROP TARGETS''''''''''''''''
 			Case "DT_LowerLeft":
 				L_DT_LowerLeft.State = 1
+				DOF 232
 				vpmtimer.AddTimer 250, "CheckLowerDropTargets() '"
 			Case "DT_LowerCenter":
 				L_DT_LowerCenter.State = 1
+				DOF 232
 				vpmtimer.AddTimer 250, "CheckLowerDropTargets() '"
 			Case "DT_LowerRight":
 				L_DT_LowerRight.State = 1
+				DOF 232
 				vpmtimer.AddTimer 250, "CheckLowerDropTargets() '"
 
 			'''''''''''''''SKILLSHOT''''''''''''''''				
 			Case "GA_SkillShot":
 				If JackpotActive Then
-					'TODO NZ: award jackpot, flash lights, etc
 					DMDZoomIn UDMDBlackBackground, "JACKPOT!","",1000, true
-					
-					'randomly blink the table flashers
-					FlashEffect 2
+					DOF 450 'TODO NZ: need to play a sound with this'
+					FlashEffect 2 'randomly blink the table flashers
 					
 					AddScore(1000)
 					SetJackpot false
@@ -3921,19 +3913,20 @@ End Sub
 				
 				If RightLockballMode Then
 					WriteLog("Function KI_RightLockball Note='right lockball mode is enabled'")
-					PlaySoundAt "LockballLock", KI_RightLockball
+					PlaySoundAt SoundFXDOF("LockballLock", 453, DOFPulse, DOFContactors), KI_RightLockball
+
+
 					AddScore(500)
 					L_MultiballLocked2.State = 1
 					DMD UDMDBlackBackground, "ITSI Lockball", "Locked!", 1000, true
 					vpmtimer.addtimer 1000, "CheckMultiBallReady '"
 					vpmtimer.addtimer 1000, "CreateNewBall true '"
 					ObtainPlayfieldObjective(LowerPlayfieldObjective)
-					'TODO NZ: dof/lights'
+
 				Else
 					WriteLog("Function KI_RightLockball Note='right lockball mode is disabled'")
 					DMD "LowerDropTargetAnimationFinal.gif", "Hit the targets!", "", 1000, true
 					AddScore(100)
-					'TODO NZ: dof/lights
 					vpmtimer.addtimer 500, "KickRightLockball '"
 					
 				End If
@@ -3947,7 +3940,7 @@ End Sub
 				
 				If LeftLockballMode Then
 					WriteLog("Function=KI_LeftLockball_Hit Note='lockball mode is enabled'")
-					PlaySoundAt "LockballLock", KI_LeftLockball
+					PlaySoundAt SoundFXDOF("LockballLock", 453, DOFPulse, DOFContactors), KI_LeftLockball
 					AddScore(500)
 					L_MultiballLocked1.State = 1
 					DMD UDMDBlackBackground, "ES Lockball", "Locked!", 1000, true
@@ -3982,9 +3975,8 @@ End Sub
 			'''''''''''''''BUMPERS''''''''''''''''
 			Case "B_Left":
 				LightEffect 5
-				PlaySoundAt SoundFXDOF("fx_bumper", 107, DOFPulse, DOFContactors), ActiveBall
-				DOF 110, DOFPulse
-				DOF 302, DOFPulse   'DOF MX - Bumper 1
+				PlaySoundAt SoundFXDOF("fx_bumper", 120, DOFPulse, DOFContactors), ActiveBall
+				DOF 302, DOFPulse 
 				AddScore(5)
 				BumperHitCount = BumperHitCount + 1
 				CheckBumperHitCount
@@ -3992,18 +3984,16 @@ End Sub
 
 			Case "B_Right":
 				LightEffect 5
-				PlaySoundAt SoundFXDOF("fx_bumper", 109, DOFPulse, DOFContactors), ActiveBall
-				DOF 111, DOFPulse
-				DOF 303, DOFPulse   'DOF MX - Bumper 2
+				PlaySoundAt SoundFXDOF("fx_bumper", 121, DOFPulse, DOFContactors), ActiveBall
+				DOF 303, DOFPulse 
 				AddScore(5)
 				BumperHitCount = BumperHitCount + 1
 				CheckBumperHitCount
 
 			Case "B_Lower":
 				LightEffect 5
-				PlaySoundAt SoundFXDOF("fx_bumper", 108, DOFPulse, DOFContactors), ActiveBall
-				DOF 112, DOFPulse
-				DOF 304, DOFPulse   'DOF MX - Bumper 3
+				PlaySoundAt SoundFXDOF("fx_bumper", 122, DOFPulse, DOFContactors), ActiveBall
+				DOF 304, DOFPulse  
 				AddScore(5)
 				BumperHitCount = BumperHitCount + 1
 				CheckBumperHitCount
@@ -4012,9 +4002,7 @@ End Sub
 			'''''''''''''''INLANES''''''''''''''''
 			Case "TR_LeftInlane":
 				If bMultiBallMode = False Then
-					PlaySoundAt "InLaneHit", TR_LeftInlane
-					DOF 144, DOFPulse
-					DOF 313, DOFPulse   'DOF MX - Left Outer Lane
+					PlaySoundAt SoundFXDOF("fx_bumper", 301, DOFPulse, DOFContactors), TR_LeftInlane
 				End If
 				AddScore(25)
 				AddBonus(25)
@@ -4022,14 +4010,10 @@ End Sub
 					SetRightOutlaneSaver(True)
 					vpmtimer.AddTimer 10000, "SetRightOutlaneSaver False '"
 				End If
-				' Do some sound or light effect
-				'LastSwitchHit = "lane1"
 
 			Case "TR_RightInlane":
 				If bMultiBallMode = False Then
-					PlaySoundAt "InLaneHit", TR_RightInlane
-					DOF 144, DOFPulse
-					DOF 313, DOFPulse   'DOF MX - Left Outer Lane
+					PlaySoundAt SoundFXDOF("fx_bumper", 308, DOFPulse, DOFContactors), TR_RightInlane
 				End If
 				AddScore(25)
 				AddBonus(25)
@@ -4037,11 +4021,9 @@ End Sub
 					SetLeftOutlaneSaver(True)
 					vpmtimer.AddTimer 10000, "SetLeftOutlaneSaver False '"
 				End If
-				' Do some sound or light effect
-				'LastSwitchHit = "lane1"
 			
 			Case "TR_LeftLockball":
-				'TODO NZ: dof/lights/etc
+				DOF 442
 				AddScore(50)
 				AddBonus(100)
 				
@@ -4067,92 +4049,87 @@ End Sub
 						If NOT JackpotActive Then
 							WriteLog("Function=GA_PowerupRamp_Hit Note='Jackpot active from powerup ramp'")
 							SetJackpot true
-							
-							'TODO NZ: dof/sound/etc
 						End If
 						For i = 1 to 3
 							OrbitalLights(i-1).State = 0
 						Next
 					Else
+						DOF 441
 						DMD "DMDStreamScroller.gif", "", "", 2000, true
 					End If
 				Else 
 					WriteLog("Function=GA_PowerupRamp_Hit Note='powerup ramp not active'")
 				End If
 			Case "TR_PowerupRamp":
-				PlaySound "StreamData"
-				'TODO NZ: lights
+				PlaySoundAt SoundFXDOF("StreamData", 440, DOFPulse, DOFContactors), TR_PowerupRamp
 			
 			
 			'''''''''''''''TARGETS''''''''''''''''
-			'TODO NZ: DMD effects for the targets
 			Case "TA_ObjectiveA":
 				FlashForMs F_9, 250, 50, 0
 				FlashForMs F_9B, 250, 50, 0
+				DOF 415 'D MX light'
 				ObtainTargetObjective(TargetObjectiveA)
 			Case "TA_ObjectiveB":
 				FlashForMs F_3, 250, 50, 0
 				FlashForMs F_3B, 250, 50, 0
+				DOF 416 'A MX light'
 				ObtainTargetObjective(TargetObjectiveB)
 			Case "TA_ObjectiveC":
 				FlashForMs F_3, 250, 50, 0
 				FlashForMs F_3B, 250, 50, 0
+				DOF 417 'T MX light'
 				ObtainTargetObjective(TargetObjectiveC)
 			Case "TA_ObjectiveD":
 				FlashForMs F_6, 250, 50, 0
 				FlashForMs F_6B, 250, 50, 0
+				DOF 418 'A MX light'
 				ObtainTargetObjective(TargetObjectiveD)
 			Case "TA_ObjectiveE":
 				FlashForMs F_8, 250, 50, 0
 				FlashForMs F_8B, 250, 50, 0
-				
+				DOF 419 '! MX light'
 				ObtainTargetObjective(TargetObjectiveE)
 
 			'''''''''''''''OUTLANES''''''''''''''''
 			Case "KI_LeftOutlaneSaver":
+				If KI_LeftOutlaneSaver.Enabled = 1 Then
+					DOF 133
+				End If
 				KI_LeftOutlaneSaver.Kick 0, 50
-				'TODO NZ: Animate P_LeftOutlaneSaver
 
 			Case "TR_RightOutlane":
 				If NOT Invincibility Then
 					If RightOutlaneSaverMode Then
-						PlaySoundAt "OutlaneSave", TR_RightOutlane
+						PlaySoundAt SoundFXDOF("OutlaneSave", 309, DOFPulse, DOFContactors), TR_RightOutlane
 						vpmtimer.AddTimer 1000, "SetRightOutlaneSaver false '"
 					Else
 						FlashForMs F_8, 250, 50, 0
 						FlashForMs F_8B, 250, 50, 0
 						AddScore(50)
 						AddBonus(50)
-						PlaySound "OutlaneDrain"
+						PlaySoundAt SoundFXDOF("OutlaneDrain", 131, DOFPulse, DOFContactors), TR_RightOutlane
 						DMD UDMDBlackBackground, "15000 Step Regex", "SAD FACE", 500, false
-						'TODO NZ: lights
-						'assign points going to drain
 					End If
 				Else
-					PlaySound "OutlaneSave"
+					PlaySoundAt SoundFXDOF("OutlaneSave", 309, DOFPulse, DOFContactors), TR_RightOutlane
 				End If
 
 			Case "TR_LeftOutlane":
-				'TODO NZ: assign points and disable saver maybe
 				If NOT Invincibility Then
 					If LeftOutlaneSaverMode Then
-						PlaySoundAt "OutlaneSave", TR_LeftOutlane
-						
-						'TODO NZ: lights
+						PlaySoundAt SoundFXDOF("OutlaneSave", 300, DOFPulse, DOFContactors), TR_LeftOutlane
 						vpmtimer.AddTimer 1000, "SetLeftOutlaneSaver false '"
 					Else
 						FlashForMs F_7, 250, 50, 0
 						FlashForMs F_7B, 250, 50, 0
 						AddScore(50)
 						AddBonus(50)
-						PlaySoundAt "OutlaneDrain", TR_LeftOutlane
+						PlaySoundAt SoundFXDOF("OutlaneDrain", 130, DOFPulse, DOFContactors), TR_LeftOutlane
 						DMD UDMDBlackBackground, "15000 Step Regex", "SAD FACE", 500, false
-						'TODO NZ: lights
 					End If
-					
 				Else 
-					PlaySoundAt "OutlaneSave", TR_LeftOutlane
-					'TODO NZ: lights
+					PlaySoundAt SoundFXDOF("OutlaneSave", 300, DOFPulse, DOFContactors), TR_LeftOutlane
 				End If
 				
 				
@@ -4166,13 +4143,7 @@ End Sub
 				SetPowerupRamp(false)
 				bBallInPlungerLane = True
 				bBallInPlay = True
-				If bAutoPlunger Then
-					DOF 114, DOFPulse		
-					DOF 115, DOFPulse
-					DOF 318, DOFPulse
-					bAutoPlunger = False
-					
-				End If
+				PlaySoundAt SoundFXDOF("OutlaneSave", 310, DOFPulse, DOFContactors), TR_BallLaunch
 
 			End Select	
 		End If
@@ -4206,14 +4177,11 @@ End Sub
 				WriteLog("Function=CheckUpperDropTargets Note='All targets are dropped'")
 				FlashForMs F_9, 250, 50, 0
 				FlashForMs F_9B, 250, 50, 0
-
 				DMDZoomIn "DMDPonyAnimation.gif", "        ES Lockball", "      READY!", 1500, 1
-				
 				SetLeftLockball(true)
 				ResetUpperDropTargets
 				AddScore(50)
 				AddBonus(100)
-				'TODO NZ: dof to tell folks left kicker is lockable
 			Else
 				AddScore(10)
 			End If
@@ -4231,14 +4199,11 @@ End Sub
 				WriteLog("Function=CheckLowerDropTargets Note='All targets are dropped'")
 				FlashForMs F_6, 250, 50, 0
 				FlashForMs F_6B, 250, 50, 0
-
 				DMDZoomIn "DMDPonyAnimation.gif", "        ITSI Lockball", "      READY!", 1500, 1
-				
 				SetRightLockball(true)
 				ResetLowerDropTargets
 				AddScore(50)
 				AddBonus(100)
-				'TODO NZ: dof to tell folks left kicker is lockable, dmd & 
 			Else
 				AddScore(10)
 			End If
@@ -4285,7 +4250,6 @@ End Sub
 '---------LOCK BALL HELPERS-----------
 	Sub SetLeftLockball(mode)
 		If mode Then
-			'TODO NZ: dof/pup
 			LeftLockballMode = true
 			L_LeftLockballReady.State = 1
 		Else 
@@ -4296,7 +4260,6 @@ End Sub
 
 	Sub SetRightLockball(mode)
 		If mode Then
-			'TODO NZ: dof/pup
 			RightLockballMode = true
 			L_RightLockbalLReady.State = 1
 		Else 
@@ -4380,9 +4343,8 @@ End Sub
 			SetJackpot true
 			ObtainPlayfieldObjective(TargetsPlayfieldObjective)
 			AddBonus(50)
-			ResetTargetObjectives
-				
-			'TODO NZ: dof/lights/dmd
+			ResetTargetObjectives				
+			'TODO NZ: DOF Lights
 		Else
 			Select Case objectiveNumber
 			Case 0:
@@ -4419,7 +4381,7 @@ End Sub
 		'TODO NZ: play sound here
 		DMD "DataDropIn.gif", "", "", 1500, false
 		DMDZoomIn UDMDBlackBackground, "Unlimited Data", "Multiball!!", 2000, false
-		
+		DOF 482
 		FlashEffect 2
 		
 		vpmtimer.addtimer 2000, "MultiballRoutinePart2() '"
@@ -4451,8 +4413,8 @@ End Sub
 			L_JackpotReady.State = 2
 			L_JackpotReady.BlinkInterval = 500
 			FlashForMs  F_2, 1000, 100, 0
+			DOF 451
 			DMDScroll UDMDBlackBackground, "Data Jackpot", "Active!", 2000, true
-			'TODO NZ: play some stuff and flash some lights to indicate jackpot is active
 		Else
 			L_JackpotReady.State = 0
 		End If
@@ -4467,14 +4429,14 @@ End Sub
 			KI_LeftOutlaneSaver.Enabled = mode
 			L_LeftOutlane.State = 1
 			If Not Invincibility Then
-				'TODO NZ: turn on light, play sound, dof
+				'TODO NZ: maybe stuff here?'
 			End If
 		Else
 			If Not Invincibility Then
 				KI_LeftOutlaneSaver.Enabled = mode
 				L_LeftOutlane.State = 0
 			End If
-			'TODO NZ: turn on light, play sound, dof
+			'TODO NZ: maybe stuff here?'
 		End If		
 	
 	End Sub
@@ -4483,20 +4445,19 @@ End Sub
 		WriteLog("Function=SetRightOutlaneSaver mode=" & mode)
 		RightOutlaneSaverMode = mode
 		
-		'TODO NZ: turn on light, play sound, dof
 		If mode Then
 			PlaySoundAt "RightOutlaneSaverActive", TR_RightOutlane
 			L_RightOutlane.State = 1
 			FL_RightOutlaneSaver.RotateToEnd
 			If Not Invincibility Then				
-				'Play sound
+				'TODO NZ: maybe stuff here?'
 			End If			
 		Else
 			If Not Invincibility Then
 				PlaySoundAt "RightOutlaneSaverInactive", TR_RightOutlane
 				L_RightOutlane.State = 0
 				FL_RightOutlaneSaver.RotateToStart
-				'Play sound
+				'TODO NZ: maybe stuff here?'
 			End If
 		End If
 	End Sub
@@ -4506,9 +4467,7 @@ End Sub
 		Select Case laneLetter
 		Case "S":
 			If L_SLight.State = 0 Then 
-				'L_SLight.State = 1 
-				SetLightColor L_SLight, red, 1, -1
-				'L_SLight.State = 1
+				L_SLight.State = 1
 			Else 
 				L_SLight.State = 0
 			End If
@@ -4539,9 +4498,7 @@ End Sub
 				FlashForMs GI_6, 1000, 100, 2
 				FlashForMs GI_7, 1000, 100, 2
 				PlaySound "MultiplierLevelUp"
-				'TODO NZ: DOF and Sounds
-			End If
-			
+			End If			
 		End If
 		
 	End Sub
@@ -4555,9 +4512,9 @@ End Sub
 	Sub ActivateInvincibility(seconds)		
 		WriteLog("Function=ActivateInvincibility seconds=" & seconds)
 		'order is important.  the invincibility flag needs to be set first to keep the saver toggles from making sounds
-		'TODO NZ: lights
 		Invincibility = True
 		PlaySound "Invincibility"
+		DOF 460
 		StartInvincibleSeq
 		SetLeftOutlaneSaver(true)
 		SetRightOutlaneSaver(true)
@@ -4576,15 +4533,12 @@ End Sub
 		L_InvincibleMode.State = 0
 		SetLeftOutlaneSaver(false)
 		SetRightOutlaneSaver(false)		
-	
-		'TODO NZ: lights/dof, 
 	End Sub
 	
 	Sub CheckMultiBallReady	
 		If LeftLockballArmed AND RightLockballArmed Then
 			L_MultiballReady.State = 2
 		Else
-			
 			L_MultiballReady.State = 0
 		End If
 	End Sub
@@ -4597,12 +4551,9 @@ End Sub
 
 		If mode Then
 			WriteLog("Function=SetBallSaverMode Note='mode is true, setting timeout as passed'")
-			'TODO NZ: dof/lights/etc'
 			If delay > 0 Then
 				vpmtimer.AddTimer delay, "SetBallSaverMode false, 0 '"
 			End If
-		Else 
-			'TODO NZ: dof/lights/etc'
 		End If
 	End Sub
 '---------BUMPER HELPERS-----------	
@@ -4612,7 +4563,7 @@ End Sub
 		End If
 		
 		If BumperHitCount = BumperBonusCount Then
-			'TODO NZ: Add PUP/Topper/Sounds/DOF
+			DOF 460 ' MX electrical effect'
 			PlaySound "MultiplierLevelUp"
 			DMDScroll UDMDBlackBackground, "Data onboarding", "BONUS!", 1500, true
 
